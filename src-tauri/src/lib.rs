@@ -1,14 +1,128 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod commands;
+mod error;
+mod http_request;
+mod services;
+mod states;
+mod store;
+mod utils;
 
+
+use commands::gen_time;
+use std::sync::{Arc, Mutex};
+use tauri::{
+    menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
+    Emitter, Manager,
+};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+#[allow(unused_imports)]
+use window_vibrancy::apply_blur;
+use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+
+type SharedAppState = Arc<Mutex<states::AppState>>;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // let mut window_state = WindowState {
+    //     width: 1280, // Default width
+    //     height: 720, // Default height
+    //     x: 100,      // Default x position
+    //     y: 100,      // Default y position
+    // };
+    // let window_state = Rc::new(RefCell::new(window_state));
+    // let path = dirs::download_dir().unwrap(); // Replace with your directory path
+
+    tracing_subscriber::registry()
+        .with(http_request::HTTPTraceLayer)
+        .init();
+
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .manage(SharedAppState::new(Mutex::new(states::AppState::default())))
+        // .plugin(tauri_plugin_window_state::Builder::new().build())
+        .setup(|app| {
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_shellx::init(true))?;
+            app.handle().plugin(tauri_plugin_system_info::init())?;
+
+            let settings = MenuItemBuilder::new("Settings")
+                .id("settings")
+                .accelerator("CmdOrCtrl+,")
+                .build(app)?;
+            let app_submenu = SubmenuBuilder::new(app, "App")
+                .about(Some(AboutMetadata {
+                    ..Default::default()
+                }))
+                .separator()
+                .item(&settings)
+                .separator()
+                .services()
+                .separator()
+                .quit()
+                .build()?;
+            let menu = MenuBuilder::new(app)
+                .items(&[
+                    &app_submenu,
+                    // ... include references to any other submenus
+                ])
+                .build()?;
+
+            app.set_menu(menu)?;
+
+            app.on_menu_event(move |app, event| {
+                if event.id() == settings.id() {
+                    // emit a window event to the frontend
+                    let _event = app.emit("go-to", "/settings");
+                }
+            });
+
+            let window = app.get_webview_window("main").unwrap();
+
+            #[cfg(target_os = "macos")]
+            {
+                apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None)
+                    .expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
+            }
+
+            #[cfg(target_os = "windows")]
+            apply_blur(&window, Some((18, 18, 18, 125)))
+                .expect("Unsupported platform! 'apply_blur' is only supported on Windows");
+
+            Ok(())
+        })
+        .on_window_event(|w, _event| {
+            const EVENT_NAME: &str = "window:event";
+            let app = w.app_handle();
+            let state = app.state::<SharedAppState>();
+            let mut state = state.lock().unwrap();
+            let current_monitor_name =
+                utils::get_current_monitor_name(w).unwrap_or("default".to_string());
+            let window_state = &mut state.window;
+            window_state.height = w.inner_size().unwrap().height;
+            window_state.width = w.inner_size().unwrap().width;
+            window_state.x = w.outer_position().unwrap().x;
+            window_state.y = w.outer_position().unwrap().y;
+            window_state.monitor_name = current_monitor_name.clone();
+            window_state.scale_factor = w.scale_factor().unwrap_or(-1.0);
+            // match event {
+            //     WindowEvent::Resized(size) => {
+            //         // Update the width and height when the window is resized
+            //         window_state.width = size.width;
+            //         window_state.height = size.height;
+            //         let _ = app.emit(EVENT_NAME, &window_state);
+            //     }
+            //     WindowEvent::Moved(position) => {
+            //         // Update the x and y position when the window is moved
+            //         window_state.x = position.x;
+            //         window_state.y = position.y;
+            //         window_state.monitor_name = current_monitor_name.clone();
+            //         let _ = app.emit(EVENT_NAME, &window_state);
+            //     }
+            //     _ => {}
+            // }
+            let _ = app.emit(EVENT_NAME, &window_state);
+            // println!("App state: {:?}", state);
+        })
+        .invoke_handler(tauri::generate_handler![gen_time, commands::http_request])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
