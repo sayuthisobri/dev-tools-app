@@ -1,11 +1,20 @@
 'use client'
-import {useAppStore} from '@/stores'
-import {CodeXmlIcon, HardDriveIcon, Layout, LucideIcon, Menu, Send, SlidersHorizontal} from 'lucide-react'
+import { useAppStore } from '@/stores'
+import {
+  CloudyIcon,
+  CodeXmlIcon,
+  HardDriveIcon,
+  Layout,
+  LucideIcon,
+  Menu,
+  Send,
+  SlidersHorizontal,
+} from 'lucide-react'
 import Link from 'next/link'
-import {usePathname} from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import React from 'react'
-import {Tooltip, TooltipContent, TooltipTrigger} from '@/components/ui/tooltip'
-import {motion} from 'framer-motion'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { motion } from 'framer-motion'
 
 interface SidebarLinkProps {
   href: string;
@@ -104,6 +113,11 @@ const Sidebar = () => {
           href="/soap"
           icon={CodeXmlIcon}
           label="SOAP"
+        />
+        <SidebarLink
+          href="/files"
+          icon={CloudyIcon}
+          label="Remote Files"
         />
         <SidebarLink
           href="/settings"

@@ -15,8 +15,8 @@
     "windows": [
       {
         "title": "MSMS | Dev Tools",
-        "width": 800,
-        "height": 600,
+        "width": 1024,
+        "height": 768,
         "dragDropEnabled": true,
         "shadow": true,
         "transparent": true,

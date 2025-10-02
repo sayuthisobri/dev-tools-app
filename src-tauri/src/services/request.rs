@@ -33,9 +33,7 @@ pub struct Res {
     pub params: Option<Vec<(String, String)>>,
 }
 
-pub async fn send_request(
-    req: Req,
-) -> Result<Res> {
+pub async fn send_request(req: Req) -> Result<Res> {
     let orig: Req = req.clone();
     let client = ClientBuilder::new()
         .timeout(std::time::Duration::from_secs(10))
@@ -46,26 +44,40 @@ pub async fn send_request(
     let url: String;
     match req.params {
         Some(v) => {
-            url = Url::parse_with_params(
-                req.url.as_str(),
-                v,
-            ).unwrap().to_string()
+            url = Url::parse_with_params(req.url.as_str(), v)
+                .unwrap()
+                .to_string()
         }
-        None => { url = req.url.to_string(); }
+        None => {
+            url = req.url.to_string();
+        }
     }
-    let req_builder = client.request((Method::from_str(&req.method.unwrap_or("GET".to_string()))).unwrap_or(Method::GET), url);
+    let req_builder = client.request(
+        (Method::from_str(&req.method.unwrap_or("GET".to_string()))).unwrap_or(Method::GET),
+        url,
+    );
     // client.post(req.url)
     //     .json(&params) // Serialize params to JSON
-    let response = req_builder
-        .send()
-        .await?;
+    let response = req_builder.send().await?;
 
     // Check if the response was successful
-    let res_builder = Res::builder().req(orig)
+    let res_builder = Res::builder()
+        .req(orig)
         .status(response.status().as_u16())
         .url(response.url().to_string())
-        .headers(response.headers().iter().map(|x| (x.0.to_string(), x.1.to_str().unwrap().to_string())).collect())
-        .cookies(response.cookies().map(|cookie| (cookie.name().to_string(), cookie.value().to_string())).collect())
+        .headers(
+            response
+                .headers()
+                .iter()
+                .map(|x| (x.0.to_string(), x.1.to_str().unwrap().to_string()))
+                .collect(),
+        )
+        .cookies(
+            response
+                .cookies()
+                .map(|cookie| (cookie.name().to_string(), cookie.value().to_string()))
+                .collect(),
+        )
         .body(response.text().await?);
     Ok(res_builder.build())
 }
@@ -83,4 +95,4 @@ mod tests {
         assert_eq!(res.status, 200);
         println!("{:?}", res);
     }
-} 
+}

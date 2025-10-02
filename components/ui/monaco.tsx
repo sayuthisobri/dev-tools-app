@@ -1,23 +1,36 @@
 'use client'
-import React, {useEffect} from 'react'
-import {Editor, EditorProps, Monaco as _monaco, useMonaco} from '@monaco-editor/react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Editor, EditorProps, Monaco as _monaco } from '@monaco-editor/react'
+import { editor as editorNS } from 'monaco-editor'
+import { debounce } from 'lodash'
 
 // loader.config({monaco: _monaco})
 
 export default function Monaco({height, defaultLanguage, theme, ...props}: EditorProps): React.ReactNode {
-  const monaco = useMonaco()
+  const editorRef = useRef<HTMLDivElement>(null)
+  const [editor, setEditor] = useState<editorNS.IStandaloneCodeEditor | null>(null)
   useEffect(() => {
-    if (!monaco) return
+    if (!editor || !editorRef.current) return
 
-    // monaco.editor.create(document.getElementById('container'), {
-    //   value: 'function hello() {\n\tconsole.log("Hello, world!");\n}',
-    //   language: 'javascript',
-    // })
+    const resetEditorLayout = () => {
+      editor.layout({width: 0, height: 0})
 
-  }, [monaco])
+      window.requestAnimationFrame(() => {
+        const rect = editorRef.current?.getBoundingClientRect()
+        // console.log('resize to', rect)
+        if (!rect) return
+        editor.layout({width: rect.width, height: rect.height})
+      })
+    }
+    const debounced = debounce(resetEditorLayout, 300)
+    window.addEventListener('resize', debounced)
+    return () => window.removeEventListener('resize', debounced)
 
-  function onMount(editor: any, monaco: _monaco) {
+  }, [editorRef, editor])
+
+  function onMount(editor: editorNS.IStandaloneCodeEditor, monaco: _monaco) {
     console.log('onMount', editor, monaco)
+    setEditor(editor)
     monaco.editor.defineTheme('vs-dark', {
       base: 'vs-dark', // can also be vs-dark or hc-black
       inherit: true,
@@ -30,17 +43,17 @@ export default function Monaco({height, defaultLanguage, theme, ...props}: Edito
   }
 
   return (
-    <>
-      <Editor height={height} defaultLanguage={defaultLanguage ?? 'javascript'}
+    <div ref={editorRef} className="h-full">
+      <Editor defaultLanguage={defaultLanguage ?? 'javascript'}
               theme={theme ?? 'vs-dark'} {...props} onMount={onMount}
               options={{
-                automaticLayout: true,
+                // automaticLayout: true,
                 minimap: {
                   enabled: false, // Disable the minimap
                 },
               }}
 
       ></Editor>
-    </>
+    </div>
   )
 }

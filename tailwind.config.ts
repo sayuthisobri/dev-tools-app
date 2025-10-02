@@ -1,8 +1,8 @@
 import colors from 'tailwindcss/colors'
 
-import {createThemes} from 'tw-colors'
+import { createThemes } from 'tw-colors'
 
-import {fontFamily} from 'tailwindcss/defaultTheme'
+import { fontFamily } from 'tailwindcss/defaultTheme'
 
 
 const baseColors = [
@@ -151,5 +151,6 @@ module.exports = {
     require('tailwindcss-animate'),
     require('@tailwindcss/typography'),
     require('tailwind-scrollbar')({nocompatible: true}),
+    require('daisyui'),
   ],
 }

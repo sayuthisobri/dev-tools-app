@@ -1,7 +1,7 @@
 mod core;
-mod xml;
 mod nodes;
 mod wsdl;
+mod xml;
 
 pub use core::*;
 use tauri::{Monitor, Window};

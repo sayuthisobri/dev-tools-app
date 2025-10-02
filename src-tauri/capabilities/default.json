@@ -10,12 +10,17 @@
     "core:window:allow-maximize",
     "core:window:allow-start-dragging",
     "core:window:allow-toggle-maximize",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
     "core:default",
     "shellx:allow-open",
     "shellx:allow-kill",
     "shellx:allow-spawn",
     "shellx:allow-stdin-write",
     "shellx:allow-execute",
-    "system-info:allow-all"
+    "system-info:allow-all",
+    "drag:default",
+    "drag:allow-start-drag",
+    "dialog:default"
   ]
 }

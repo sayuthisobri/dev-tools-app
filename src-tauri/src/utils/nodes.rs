@@ -16,7 +16,11 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(name: NodeName, attributes: Vec<(NodeName, String)>, namespace: &BTreeMap<String, String>) -> Self {
+    pub fn new(
+        name: NodeName,
+        attributes: Vec<(NodeName, String)>,
+        namespace: &BTreeMap<String, String>,
+    ) -> Self {
         Self {
             name,
             attributes,
@@ -66,7 +70,7 @@ impl From<OwnedName> for NodeName {
         Self {
             name: match &value.prefix {
                 None => value.local_name.clone(),
-                Some(prefix) => format!("{}:{}", prefix, value.local_name.clone())
+                Some(prefix) => format!("{}:{}", prefix, value.local_name.clone()),
             },
             namespace: value.namespace,
         }
@@ -83,15 +87,19 @@ pub struct Nodes {
 
 impl Nodes {
     pub fn new() -> Self {
-        Self { nodes: Vec::new(), current_index: 0 }
+        Self {
+            nodes: Vec::new(),
+            current_index: 0,
+        }
     }
 
     pub fn find_node(&self, predicate: impl Fn(Node) -> bool) -> Option<RefC<Node>> {
         let option = self.iter().find(|n| predicate(n.borrow().clone()));
         match option {
-            None => self.iter()
+            None => self
+                .iter()
                 .filter(|n| n.borrow().childs.len() > 0)
-                .filter_map(|n| n.borrow().childs.find_node(|n|predicate(n.clone())))
+                .filter_map(|n| n.borrow().childs.find_node(|n| predicate(n.clone())))
                 .next(),
             Some(node) => Some(node.clone()),
         }

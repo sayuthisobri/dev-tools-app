@@ -1,15 +1,20 @@
 'use client'
 import localFont from 'next/font/local'
 import './globals.css'
-import React from 'react'
-import {ThemeProvider as NextThemesProvider} from 'next-themes'
-import {useAppStore} from '@/stores'
+import React, { useEffect } from 'react'
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
+import { useAppStore } from '@/stores'
 import Sidebar from '@/components/ui/sidebar'
-import {TooltipProvider} from '@/components/ui/tooltip'
-import {Toaster} from '@/components/ui/sonner'
-import {MyTransition} from '@/app/page-transition'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from '@/components/ui/sonner'
 import Titlebar from '@/components/ui/title-bar'
-import {CommandMenu} from '@/app/command'
+import { CommandMenu } from '@/app/command'
+import { listen } from '@tauri-apps/api/event'
+import { isWebMode } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
+import { currentMonitor, getCurrentWindow, PhysicalPosition } from '@tauri-apps/api/window'
+import { useFileDrop } from '@/hooks/file-drop'
+import { MyTransition } from '@/app/page-transition'
 
 const geistSans = localFont({
   src: '../assets/fonts/GeistVF.woff',
@@ -26,6 +31,56 @@ export default function RootLayout({
                                      children,
                                    }: Readonly<{ children: any }>) {
   const {isDarkMode, isSidebarCollapsed, isCollapsible} = useAppStore()
+  const router = useRouter()
+
+  async function init() {
+    const monitor = await currentMonitor()
+    if (monitor != null) {
+      const currentWindow = getCurrentWindow()
+      let size = Object.assign({}, monitor.size)
+      const scale = 0.8
+      size.width = Math.round(size.width * scale)
+      size.height = Math.round(size.height * scale)
+      const physicalPosition = new PhysicalPosition(
+        Math.round((monitor.size.width - size.width) / 2),
+        Math.round((monitor.size.height - size.height) / 2),
+      )
+      console.log('position', physicalPosition, monitor.size, size)
+      // await currentWindow.setPosition(physicalPosition)
+      // await currentWindow.setSize(size)
+    }
+
+  }
+
+  useEffect(() => {
+    if (isWebMode()) return
+    init().then()
+    let unListen: () => void
+    // set up event listener
+    listen('go-to', event => {
+      if (typeof event.payload != 'string') return
+      const payload: string = event.payload as string
+      if (payload.includes('::')) {
+        const [section, query] = payload.split('::', 2)
+        switch (query) {
+          case 'refresh':
+            window.location.reload()
+            break
+          default:
+            console.log('unhandled goto', payload)
+        }
+      } else {
+        router.push(payload)
+      }
+    }).then(v => unListen = v)
+
+
+    return () => {
+      // cleanup
+      if (!!unListen) unListen()
+    }
+  })
+  useFileDrop()
 
 
   return (
@@ -36,11 +91,13 @@ export default function RootLayout({
     >
     <body
       onContextMenu={(e) => e.preventDefault()}
-      className={`${geistSans.variable} ${geistMono.variable} antialiased select-none`}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased select-none overflow-hidden
+      
+      `}
     >
     <NextThemesProvider
       attribute="class"
-      enableSystem
+      defaultTheme="dark"
       disableTransitionOnChange
     >
       <TooltipProvider>
@@ -50,10 +107,11 @@ export default function RootLayout({
         >
           <Sidebar/>
           <main
-            className={`grow h-[calc(100vh-1.75rem)] bg-background/50
+            className={`grow h-[calc(100vh-1.75rem)] bg-background/50 overflow-auto
             `}
           >
             <MyTransition>{children}</MyTransition>
+            {/*{children}*/}
           </main>
         </div>
       </TooltipProvider>
@@ -61,7 +119,7 @@ export default function RootLayout({
         duration: 1000 * 60 * 3,
         closeButton: true,
       }}/>
-      <CommandMenu />
+      <CommandMenu/>
     </NextThemesProvider>
     </body>
     </html>

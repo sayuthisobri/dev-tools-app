@@ -61,20 +61,29 @@ impl Wsdl {
             allow_dtd: true,
             ..roxmltree::ParsingOptions::default()
         };
-        let doc = Document::parse_with_options(&wsdl_raw, opt).expect(format!("Failed to load wsdl {}", path).as_str());
+        let doc = Document::parse_with_options(&wsdl_raw, opt)
+            .expect(format!("Failed to load wsdl {}", path).as_str());
         let root = doc.root_element();
         let target_ns = root.attribute("targetNamespace").unwrap_or("");
 
         // imports
-        let imports = root.descendants()
-            .filter(|n| match_tag(n.tag_name(), "import", None) && n.has_attribute("schemaLocation") && match_attr(n, "namespace", target_ns))
+        let imports = root
+            .descendants()
+            .filter(|n| {
+                match_tag(n.tag_name(), "import", None)
+                    && n.has_attribute("schemaLocation")
+                    && match_attr(n, "namespace", target_ns)
+            })
             .filter_map(|i| i.attribute("schemaLocation"))
             .map(|p| read_file(p.resolve_in(parent_dir)))
             .collect::<Vec<String>>();
 
         let mut imported_docs: Vec<Document> = Vec::new();
         for content in &imports {
-            imported_docs.push(Document::parse_with_options(content, opt).expect(format!("Failed to load wsdl {}", path).as_str()));
+            imported_docs.push(
+                Document::parse_with_options(content, opt)
+                    .expect(format!("Failed to load wsdl {}", path).as_str()),
+            );
         }
 
         // dbg!(imported_docs.last().unwrap().root_element().children().filter(|n| match_tag(n.tag_name(), "element", None))
@@ -87,13 +96,25 @@ impl Wsdl {
             name: root.attribute("name").unwrap_or_default().to_string(),
             file_path: path.to_string(),
             target_ns: target_ns.to_string(),
-            services: root.children().filter(|n| n.is_element() && n.tag_name().name() == "service")
+            services: root
+                .children()
+                .filter(|n| n.is_element() && n.tag_name().name() == "service")
                 .fold(HashMap::new(), |mut m, n| {
-                    let name = n.attribute("name").expect("Failed to get service name").to_string();
+                    let name = n
+                        .attribute("name")
+                        .expect("Failed to get service name")
+                        .to_string();
                     m.insert(name, prepare_svc_port(&root, &n, &imported_docs));
                     m
                 }),
-            ns: root.namespaces().map(|n| n.name().map(|_n| format!("{}:{}", _n, n.uri())).unwrap_or(n.uri().to_string())).collect(),
+            ns: root
+                .namespaces()
+                .map(|n| {
+                    n.name()
+                        .map(|_n| format!("{}:{}", _n, n.uri()))
+                        .unwrap_or(n.uri().to_string())
+                })
+                .collect(),
         };
         Ok(wsdl)
     }
@@ -114,8 +135,12 @@ fn match_attr(subject: &Node, attr: &str, value: &str) -> bool {
 fn match_name(subject: &Node, name: &str) -> bool {
     let mut local_name = name;
     if let Some((prefix, name)) = name.rsplit_once(':') {
-        if !subject.document().root_element().namespaces()
-            .any(|n| n.name().map(|_n| _n.to_string()) == Some(prefix.to_string())) {
+        if !subject
+            .document()
+            .root_element()
+            .namespaces()
+            .any(|n| n.name().map(|_n| _n.to_string()) == Some(prefix.to_string()))
+        {
             return false;
         }
         local_name = name;
@@ -126,44 +151,82 @@ fn match_name(subject: &Node, name: &str) -> bool {
 fn prepare_svc_port(root: &Node, svc: &Node, imported_docs: &Vec<Document>) -> Vec<ServicePort> {
     svc.children()
         .filter(|n| match_tag(n.tag_name(), "port", None) && n.has_attribute("binding"))
-        .map(|p| {
-            ServicePort {
-                name: p.attribute("name").unwrap_or_default().to_string(),
-                address: p.children().find(|n| match_tag(n.tag_name(), "address", None))
-                    .map(|a| a.attribute("location").unwrap_or_default().to_string())
-                    .expect("Failed to get address"),
-                binding: prepare_binding(root, &p, p.attribute("binding").unwrap_or_default(), imported_docs),
-            }
-        }).collect()
+        .map(|p| ServicePort {
+            name: p.attribute("name").unwrap_or_default().to_string(),
+            address: p
+                .children()
+                .find(|n| match_tag(n.tag_name(), "address", None))
+                .map(|a| a.attribute("location").unwrap_or_default().to_string())
+                .expect("Failed to get address"),
+            binding: prepare_binding(
+                root,
+                &p,
+                p.attribute("binding").unwrap_or_default(),
+                imported_docs,
+            ),
+        })
+        .collect()
 }
 
 fn prepare_binding(root: &Node, port: &Node, name: &str, imported_docs: &Vec<Document>) -> Binding {
-    let binding_iter = root.children()
-        .filter(|n| match_tag(n.tag_name(), "binding", Some("http://schemas.xmlsoap.org/wsdl/")) && match_name(n, name));
+    let binding_iter = root.children().filter(|n| {
+        match_tag(
+            n.tag_name(),
+            "binding",
+            Some("http://schemas.xmlsoap.org/wsdl/"),
+        ) && match_name(n, name)
+    });
 
     let (transport, operations) = binding_iter
         .map(|b| {
-            let port_type = b.attribute("type")
+            let port_type = b
+                .attribute("type")
                 .map(|t| {
-                    root.children()
-                        .find(|n| match_tag(n.tag_name(), "portType", Some("http://schemas.xmlsoap.org/wsdl/")) && match_name(n, t))
-                }).flatten()
+                    root.children().find(|n| {
+                        match_tag(
+                            n.tag_name(),
+                            "portType",
+                            Some("http://schemas.xmlsoap.org/wsdl/"),
+                        ) && match_name(n, t)
+                    })
+                })
+                .flatten()
                 .expect("Failed to get port type");
             (b, port_type)
         })
         .fold(("", Vec::new()), |_, (b, p)| {
-            let transport = b.descendants()
-                .find(|n| match_tag(n.tag_name(), "binding", Some("http://schemas.xmlsoap.org/wsdl/soap/")))
-                .map(|b| b.attribute("transport").expect("Failed to get transport info")).unwrap_or("");
+            let transport = b
+                .descendants()
+                .find(|n| {
+                    match_tag(
+                        n.tag_name(),
+                        "binding",
+                        Some("http://schemas.xmlsoap.org/wsdl/soap/"),
+                    )
+                })
+                .map(|b| {
+                    b.attribute("transport")
+                        .expect("Failed to get transport info")
+                })
+                .unwrap_or("");
 
-            (transport, p.descendants().filter(|n| match_tag(n.tag_name(), "operation", Some("http://schemas.xmlsoap.org/wsdl/")))
-                .map(|o| {
-                    Operation {
+            (
+                transport,
+                p.descendants()
+                    .filter(|n| {
+                        match_tag(
+                            n.tag_name(),
+                            "operation",
+                            Some("http://schemas.xmlsoap.org/wsdl/"),
+                        )
+                    })
+                    .map(|o| Operation {
                         name: o.attribute("name").unwrap_or_default().to_string(),
                         input: prepare_message(&o, "input", &imported_docs),
                         output: prepare_message(&o, "output", &imported_docs),
-                    }
-                }).collect())
+                    })
+                    .collect(),
+            )
         });
     Binding {
         name: port.attribute("binding").unwrap_or_default().to_string(),
@@ -174,48 +237,90 @@ fn prepare_binding(root: &Node, port: &Node, name: &str, imported_docs: &Vec<Doc
 
 fn prepare_message(operation: &Node, msg_type: &str, imported_docs: &Vec<Document>) -> Field {
     let get_io_node = || -> Node {
-        find_child_tag(operation, msg_type, None, Some("http://schemas.xmlsoap.org/wsdl/"), true)
-            .expect("Failed to get input/output node")
+        find_child_tag(
+            operation,
+            msg_type,
+            None,
+            Some("http://schemas.xmlsoap.org/wsdl/"),
+            true,
+        )
+        .expect("Failed to get input/output node")
     };
 
     let handle_message_part = |m: Node| -> Field {
-        find_child_tag(&m, "part", None, Some("http://schemas.xmlsoap.org/wsdl/"), false)
-            .as_ref().map(|p| prepare_field(p, imported_docs))
-            .expect("Failed to get message part")
+        find_child_tag(
+            &m,
+            "part",
+            None,
+            Some("http://schemas.xmlsoap.org/wsdl/"),
+            false,
+        )
+        .as_ref()
+        .map(|p| prepare_field(p, imported_docs))
+        .expect("Failed to get message part")
     };
 
     let io_node = get_io_node();
     let msg_name = io_node.attribute("message").unwrap_or_default();
-    let get_msg_node = |m: &Node| match_tag(m.tag_name(), "message", Some("http://schemas.xmlsoap.org/wsdl/")) && match_name(m, msg_name);
-    get_root(&io_node).children()
+    let get_msg_node = |m: &Node| {
+        match_tag(
+            m.tag_name(),
+            "message",
+            Some("http://schemas.xmlsoap.org/wsdl/"),
+        ) && match_name(m, msg_name)
+    };
+    get_root(&io_node)
+        .children()
         .find(get_msg_node)
         .map(|m| handle_message_part(m))
         .expect("Failed to find message node")
 }
 
-fn find_child_tag<'a, 'input: 'a>(node: &Node<'a, 'input>, tag: &str, name: Option<&str>, ns: Option<&str>, nested: bool) -> Option<Node<'a, 'input>> {
-    let items: Box<dyn Iterator<Item=Node<'a, 'input>>>;
-    if nested { items = Box::new(node.descendants()) } else { items = Box::new(node.children()) }
-    items.filter(|n| name.is_none_or(|name| match_name(n, name)))
+fn find_child_tag<'a, 'input: 'a>(
+    node: &Node<'a, 'input>,
+    tag: &str,
+    name: Option<&str>,
+    ns: Option<&str>,
+    nested: bool,
+) -> Option<Node<'a, 'input>> {
+    let items: Box<dyn Iterator<Item = Node<'a, 'input>>>;
+    if nested {
+        items = Box::new(node.descendants())
+    } else {
+        items = Box::new(node.children())
+    }
+    items
+        .filter(|n| name.is_none_or(|name| match_name(n, name)))
         .find(|p| match_tag(p.tag_name(), tag, ns))
 }
 
-fn prepare_field<'a, 'input: 'a>(part: &'a Node<'a, 'input>, imported_docs: &'a Vec<Document<'input>>) -> Field {
-    let element_name = part.attribute("element").expect("Missing element attribute on part tag");
+fn prepare_field<'a, 'input: 'a>(
+    part: &'a Node<'a, 'input>,
+    imported_docs: &'a Vec<Document<'input>>,
+) -> Field {
+    let element_name = part
+        .attribute("element")
+        .expect("Missing element attribute on part tag");
     let root = get_root(&part);
-    let find_element = |root: &Node<'a, 'input>| find_child_tag(root, "element", Some(element_name), None, true);
+    let find_element =
+        |root: &Node<'a, 'input>| find_child_tag(root, "element", Some(element_name), None, true);
     let element = find_element(&root);
     let element: Option<Node> = if element.is_some() {
         element
     } else if imported_docs.len() > 0 {
-        imported_docs.iter().map(|d| d.root_element()).filter_map(|root| find_element(&root)).next()
+        imported_docs
+            .iter()
+            .map(|d| d.root_element())
+            .filter_map(|root| find_element(&root))
+            .next()
     } else {
         None
     };
 
     fn populate_field(n: &Node) -> Field {
         let mut f = Field::new(n.attribute("name").unwrap_or_default().to_string());
-        f.attributes = n.attributes()
+        f.attributes = n
+            .attributes()
             .filter(|a| !["name"].contains(&a.name()))
             .map(|a| {
                 let val = a.value().rsplit_once(':').map(|v| v.1).unwrap_or(a.value());
@@ -227,13 +332,19 @@ fn prepare_field<'a, 'input: 'a>(part: &'a Node<'a, 'input>, imported_docs: &'a 
         while current_parent.is_some() && current_parent.unwrap().has_children() {
             let parent = current_parent.unwrap();
             // println!("Current parent {:?}", parent.tag_name());
-            let elements: Vec<Field> = parent.children().filter(|c| match_tag(c.tag_name(), "element", None))
-                .map(|c| populate_field(&c)).collect();
+            let elements: Vec<Field> = parent
+                .children()
+                .filter(|c| match_tag(c.tag_name(), "element", None))
+                .map(|c| populate_field(&c))
+                .collect();
             if elements.len() > 0 {
                 f.fields = elements;
                 current_parent = None;
             } else {
-                let new_parent = parent.children().find(|c| c.is_element()).expect("Failed to get first child");
+                let new_parent = parent
+                    .children()
+                    .find(|c| c.is_element())
+                    .expect("Failed to get first child");
                 // println!("New parent: {:?}", new_parent);
                 current_parent = Some(new_parent);
             }
@@ -242,9 +353,9 @@ fn prepare_field<'a, 'input: 'a>(part: &'a Node<'a, 'input>, imported_docs: &'a 
         f
     }
 
-    element.map(|e| {
-        populate_field(&e)
-    }).expect(format!("Failed to find element {}", element_name).as_str())
+    element
+        .map(|e| populate_field(&e))
+        .expect(format!("Failed to find element {}", element_name).as_str())
 }
 
 #[cfg(test)]
@@ -266,8 +377,16 @@ mod tests {
     async fn test_logic() -> Result<()> {
         dbg!(match_tag(ExpandedName::from("msms"), "msms", None));
         dbg!(match_tag(ExpandedName::from(("tx", "msms")), "msms", None));
-        dbg!(match_tag(ExpandedName::from(("tx", "msms")), "msms", Some("tx")));
-        dbg!(match_tag(ExpandedName::from(("tx", "msms")), "msms", Some("txs")));
+        dbg!(match_tag(
+            ExpandedName::from(("tx", "msms")),
+            "msms",
+            Some("tx")
+        ));
+        dbg!(match_tag(
+            ExpandedName::from(("tx", "msms")),
+            "msms",
+            Some("txs")
+        ));
         Ok(())
     }
 }

@@ -6,7 +6,6 @@ mod states;
 mod store;
 mod utils;
 
-
 use commands::gen_time;
 use std::sync::{Arc, Mutex};
 use tauri::{
@@ -36,29 +35,37 @@ pub fn run() {
         .init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_drag::init())
+        .plugin(tauri_plugin_shellx::init(true))
+        .plugin(tauri_plugin_system_info::init())
         .manage(SharedAppState::new(Mutex::new(states::AppState::default())))
         // .plugin(tauri_plugin_window_state::Builder::new().build())
         .setup(|app| {
             #[cfg(desktop)]
-            app.handle().plugin(tauri_plugin_shellx::init(true))?;
-            app.handle().plugin(tauri_plugin_system_info::init())?;
-
+            //             app.handle().plugin(tauri_plugin_shellx::init(true))?;
+            //             app.handle().plugin(tauri_plugin_system_info::init())?;
             let settings = MenuItemBuilder::new("Settings")
                 .id("settings")
                 .accelerator("CmdOrCtrl+,")
                 .build(app)?;
-            let app_submenu = SubmenuBuilder::new(app, "App")
+            let refresh = MenuItemBuilder::new("Refresh")
+                .id("refresh")
+                .accelerator("CmdOrCtrl+r")
+                .build(app)?;
+            let mut app_submenu_builder = SubmenuBuilder::new(app, "App")
                 .about(Some(AboutMetadata {
                     ..Default::default()
                 }))
                 .separator()
                 .item(&settings)
-                .separator()
-                .services()
-                .separator()
-                .quit()
-                .build()?;
+                .separator();
+            #[cfg(debug_assertions)]
+            {
+                app_submenu_builder = app_submenu_builder.separator().item(&refresh);
+            }
+            let app_submenu = app_submenu_builder.services().separator().quit().build()?;
             let menu = MenuBuilder::new(app)
                 .items(&[
                     &app_submenu,
@@ -68,14 +75,21 @@ pub fn run() {
 
             app.set_menu(menu)?;
 
-            app.on_menu_event(move |app, event| {
-                if event.id() == settings.id() {
-                    // emit a window event to the frontend
-                    let _event = app.emit("go-to", "/settings");
+            app.on_menu_event(move |app, event| match event.id().0.as_str() {
+                "settings" => {
+                    app.emit("go-to", "/settings")
+                        .expect("Unable to emit go-to event");
                 }
+                "refresh" => {
+                    app.emit("go-to", "page::refresh")
+                        .expect("Unable to emit window event");
+                }
+                _ => {}
             });
 
-            let window = app.get_webview_window("main").unwrap();
+            let window = app
+                .get_webview_window("main")
+                .expect("Failed to get main window");
 
             #[cfg(target_os = "macos")]
             {

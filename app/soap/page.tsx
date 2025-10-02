@@ -1,8 +1,8 @@
 'use client'
 
-import {useEffect} from 'react'
+import { useEffect } from 'react'
 import Button from '@/components/ui/button'
-import {Command} from 'tauri-plugin-shellx-api'
+import { Command } from 'tauri-plugin-shellx-api'
 import {
   Drawer,
   DrawerClose,
@@ -13,8 +13,8 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer'
-import {toast} from 'sonner'
-import {PageTitle} from '@/components/ui/typography'
+import { toast } from 'sonner'
+import { PageTitle } from '@/components/ui/typography'
 
 function DrawerDemo() {
   return (
@@ -41,7 +41,7 @@ function DrawerDemo() {
 export default function SoapPage() {
   useEffect(() => {
   })
-  return <div className="flex gap-2 flex-col m-2">
+  return <div className="flex gap-2 flex-col p-2">
     <PageTitle>SOAP Client</PageTitle>
     <div className="flex gap-2"><DrawerDemo/>
       <Button onClick={() => {

@@ -2,8 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-html,body {
-  background: transparent;
+body {
+  /*background: transparent;*/
+  background-color: #240750;
+background-image: radial-gradient(at 36% 69%, #240750 0%, transparent 60%), radial-gradient(at 51% 21%, #344c64 0%, transparent 50%), radial-gradient(at 55% 43%, #577b8d 0%, transparent 40%), radial-gradient(at 73% 1%, #57a6a1 0%, transparent 30%);
 }
 
 body {

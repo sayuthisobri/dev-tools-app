@@ -14,6 +14,10 @@ pub fn new_ref<T>(value: T) -> std::rc::Rc<std::cell::RefCell<T>> {
     std::rc::Rc::new(std::cell::RefCell::new(value))
 }
 
-pub fn read_file<P: AsRef<Path>>(path: P) -> String where P: Debug {
-    std::fs::read_to_string(&path).expect(format!("Failed to read file content: {:?}", path).as_str())
+pub fn read_file<P: AsRef<Path>>(path: P) -> String
+where
+    P: Debug,
+{
+    std::fs::read_to_string(&path)
+        .expect(format!("Failed to read file content: {:?}", path).as_str())
 }

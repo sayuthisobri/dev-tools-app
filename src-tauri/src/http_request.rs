@@ -100,7 +100,6 @@ pub async fn request(
     // let original_req = http_request.clone();
     // .http_stats(HTTPStats::default())
 
-
     let mut current_url: Url = Url::parse(http_request.url.as_str())?;
     for q in http_request.query {
         if !q.enabled {
@@ -146,7 +145,8 @@ pub async fn request(
     }
     req_headers.insert("Accept-Encoding", HeaderValue::from_str("gzip, br")?);
 
-    let mut request_builder = client.request(method, current_url)
+    let mut request_builder = client
+        .request(method, current_url)
         .headers(req_headers)
         .timeout(connect_timeout);
 
@@ -162,8 +162,7 @@ pub async fn request(
     } else {
         request_builder
     };
-    let res = request_builder
-        .send().await?;
+    let res = request_builder.send().await?;
 
     // let content_encoding_key = "content-encoding";
     let mut headers = HashMap::new();
@@ -401,7 +400,7 @@ pub struct HTTPTraceLayer;
 impl<S> Layer<S> for HTTPTraceLayer
 where
     S: tracing::Subscriber,
-// Scary! But there's no need to even understand it. We just need it.
+    // Scary! But there's no need to even understand it. We just need it.
     S: for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>,
 {
     fn on_event(&self, event: &tracing::Event<'_>, _: tracing_subscriber::layer::Context<'_, S>) {

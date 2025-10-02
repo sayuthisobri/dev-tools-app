@@ -1,7 +1,7 @@
-import {type ClassValue, clsx} from 'clsx'
-import {twMerge} from 'tailwind-merge'
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 import Debug from 'debug'
-import {invoke, InvokeArgs} from '@tauri-apps/api/core'
+import { invoke, InvokeArgs, isTauri as isTauriMode } from '@tauri-apps/api/core'
 
 const debug = Debug('util')
 
@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function isTauri() {
-  return (window as any)['__TAURI__'] !== undefined
+  return isTauriMode()
 }
 
 /**
