@@ -1,6 +1,6 @@
 #[allow(dead_code, unused_imports)]
 // use crate::cookies;
-use crate::error::APIError;
+use crate::errors::APIError;
 use anyhow::{Context, Result};
 // use log::trace;
 use once_cell::sync::OnceCell;

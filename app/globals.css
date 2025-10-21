@@ -82,3 +82,12 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@theme 'dark' {
+  div.wx-willow-dark-theme {
+    --wx-background: transparent;
+    .wx-table-box{
+      border-radius: 0.8em;
+    }
+  }
+}

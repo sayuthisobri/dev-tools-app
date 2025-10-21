@@ -1,0 +1,3 @@
+[submodule "src-tauri/src/crate/log_parser"]
+	path = src-tauri/src/crate/log_parser
+	url = git@github.com:sayuthisobri/access_log_parser.rs.git

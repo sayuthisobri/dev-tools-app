@@ -81,8 +81,14 @@ impl Wsdl {
         let mut imported_docs: Vec<Document> = Vec::new();
         for content in &imports {
             imported_docs.push(
-                Document::parse_with_options(content, opt)
-                    .expect(format!("Failed to load wsdl {}", path).as_str()),
+                Document::parse_with_options(
+                    content,
+                    roxmltree::ParsingOptions {
+                        allow_dtd: true,
+                        ..roxmltree::ParsingOptions::default()
+                    },
+                )
+                .expect(format!("Failed to load wsdl {}", path).as_str()),
             );
         }
 

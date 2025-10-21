@@ -1,12 +1,12 @@
 mod commands;
-mod error;
+mod errors;
 mod http_request;
 mod services;
 mod states;
 mod store;
 mod utils;
 
-use commands::gen_time;
+use commands::*;
 use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
@@ -136,7 +136,14 @@ pub fn run() {
             let _ = app.emit(EVENT_NAME, &window_state);
             // println!("App state: {:?}", state);
         })
-        .invoke_handler(tauri::generate_handler![gen_time, commands::http_request])
+        .invoke_handler(tauri::generate_handler![
+            gen_time,
+            http_send_request,
+            load_kube_config,
+            aws_profiles,
+            aws_s3_buckets,
+            aws_s3_objects,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,20 +1,20 @@
 'use client'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAppStore } from '@/stores'
+import { motion } from 'framer-motion'
 import {
   CloudyIcon,
   CodeXmlIcon,
+  ContainerIcon,
   HardDriveIcon,
   Layout,
   LucideIcon,
   Menu,
   Send,
-  SlidersHorizontal,
+  SlidersHorizontal
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import React from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { motion } from 'framer-motion'
 
 interface SidebarLinkProps {
   href: string;
@@ -108,6 +108,11 @@ const Sidebar = () => {
           href="/http"
           icon={Send}
           label="HTTP Client"
+        />
+        <SidebarLink
+          href="/kube"
+          icon={ContainerIcon}
+          label="K8s"
         />
         <SidebarLink
           href="/soap"
