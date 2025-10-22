@@ -16,7 +16,8 @@ use window_vibrancy::apply_blur;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 fn init_plugins(builder: Builder<Wry>) -> Builder<Wry>{
-    builder.plugin(tauri_plugin_dialog::init())
+    builder
+        // .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_drag::init())
         .plugin(tauri_plugin_shellx::init(true))

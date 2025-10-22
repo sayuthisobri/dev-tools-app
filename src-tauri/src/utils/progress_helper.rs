@@ -1,60 +1,60 @@
-// Path: src-tauri/src/dock_progress.rs
 // Intended action: macOS-only helper to set/clear progress on the Dock icon
 #![allow(non_snake_case)]
 
 #[cfg(target_os = "macos")]
 mod mac {
-    use cocoa::appkit::NSApp;
-    use cocoa::base::{id, nil};
-    use cocoa::foundation::{NSAutoreleasePool, NSPoint, NSRect, NSSize};
-    use objc::rc::autoreleasepool;
-    use objc::runtime::Class;
-    use objc::{class, msg_send, sel, sel_impl};
+    use objc2::rc::autoreleasepool;
+    use objc2::runtime::{AnyObject, NSObject};
+    use objc2::{class, msg_send};
+    use objc2_app_kit::{NSColor, NSImage};
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
+    use std::ffi::c_void;
     use std::sync::{Arc, Mutex, Once};
 
     lazy_static::lazy_static! {
-        static ref ORIGINAL_ICON: Mutex<Option<Arc<[u8]>>> = Mutex::new(None);
+        static ref ORIGINAL_ICON: Mutex<Option<Arc<Vec<u8>>>> = Mutex::new(None);
     }
 
     // Ensure AppKit loaded once
     static INIT: Once = Once::new();
-
     fn ensure_appkit() {
         INIT.call_once(|| {
             unsafe {
-                // create an autorelease pool to be safe
-                let _pool = NSAutoreleasePool::new(nil);
-                // ensure we have a shared application instance (should already exist in Tauri)
-                let app: id = NSApp();
-                let _: id = msg_send![app, finishLaunching];
+                autoreleasepool(|_pool| {
+                    // Ensure app finished launching; use MainThreadMarker when calling typed API.
+                    let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+                    let _: () = msg_send![app, finishLaunching];
+                });
             }
         })
     }
-
     // Draw a simple progress overlay image onto the app icon and set as application icon image.
     // fraction: 0.0..1.0
     pub fn set_dock_progress_fraction(fraction: f64) {
         unsafe {
             ensure_appkit();
-            autoreleasepool(|| {
-                let app: id = NSApp();
-                let icon: id = msg_send![app, applicationIconImage];
-                if icon == nil {
+            autoreleasepool(|_pool| {
+                let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+                let icon: *mut AnyObject = msg_send![app, applicationIconImage];
+                if icon.is_null() {
                     // nothing to do
                     return;
                 }
 
                 let mut original_icon = ORIGINAL_ICON.lock().unwrap();
                 if original_icon.is_none() {
-                    let current_icon: id = msg_send![app, applicationIconImage];
+                    let current_icon: *mut AnyObject = msg_send![app, applicationIconImage];
                     if !current_icon.is_null() {
                         // Convert NSImage to TIFF representation and get bytes
-                        let tiff_rep: id = msg_send![current_icon, TIFFRepresentation];
-                        let length: usize = msg_send![tiff_rep, length];
-                        let bytes: *const u8 = msg_send![tiff_rep, bytes];
-                        if !bytes.is_null() {
-                            let slice = std::slice::from_raw_parts(bytes, length);
-                            *original_icon = Some(Arc::from(slice));
+                        let tiff_rep: *mut AnyObject = msg_send![current_icon, TIFFRepresentation];
+                        if !tiff_rep.is_null() {
+                            let length: usize = msg_send![tiff_rep, length];
+                            let bytes: *const c_void = msg_send![tiff_rep, bytes];
+                            if !bytes.is_null() {
+                                let slice = std::slice::from_raw_parts(bytes as *const u8, length);
+                                let vec = slice.to_vec();
+                                *original_icon = Some(Arc::new(vec));
+                            }
                         }
                     }
                 }
@@ -65,16 +65,19 @@ mod mac {
                 let height = size.height;
 
                 // Create a new NSImage with same size
-                let nsimage_class = Class::get("NSImage").unwrap();
-                let new_image: id = msg_send![nsimage_class, alloc];
-                let new_image: id = msg_send![new_image, initWithSize: size];
+                let new_image: *mut AnyObject = msg_send![class!(NSImage), alloc];
+                let new_image: *mut AnyObject = msg_send![new_image, initWithSize: size];
 
                 // Begin drawing into new image using lockFocus
                 let _: () = msg_send![new_image, lockFocus];
 
                 // Draw the existing icon into it
-                let _: () = msg_send![icon, drawInRect: NSRectFromInts(0, 0, width as i32, height as i32)
-                                                fromRect: NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(width, height)) operation: 1 fraction: 1.0];
+                let source_rect = NSRect::new(NSPoint::new(0.0, 0.0), size);
+                let dest_rect = NSRectFromInts(0, 0, width as i32, height as i32);
+                let _: () = msg_send![icon, drawInRect: dest_rect
+                                            fromRect: source_rect
+                                           operation: 1 // NSCompositeSourceOver
+                                            fraction: 1.0];
 
                 // Calculate progress bar geometry (simple bar at bottom)
                 let bar_height = (height * 0.14).max(6.0); // 14% or min 6px
@@ -85,19 +88,25 @@ mod mac {
                 let fill_w = bar_w * fraction.clamp(0.0, 1.0);
 
                 // Draw background (semi-transparent dark rounded rect)
-                // Use NSBezierPath and set fill color
-                let nscolor_class = Class::get("NSColor").unwrap();
-                let bg_color: id =
-                    msg_send![nscolor_class, colorWithCalibratedWhite: 0.0 alpha: 0.55];
-                let fg_color: id = msg_send![nscolor_class, colorWithCalibratedRed: 0.19 green: 0.66 blue: 0.33 alpha: 1.0]; // green-ish
+                let bg_color: *mut NSColor =
+                    msg_send![class!(NSColor), colorWithCalibratedWhite: 0.0 alpha: 0.55];
+                let fg_color: *mut NSColor = msg_send![class!(NSColor), colorWithCalibratedRed: 0.19 green: 0.66 blue: 0.33 alpha: 1.0]; // green-ish
 
-                let nsbezier_class = Class::get("NSBezierPath").unwrap();
-                let rounded_rect_bg: id = msg_send![nsbezier_class, bezierPathWithRoundedRect: NSRectFromDoubles(bar_x, bar_y, bar_w, bar_height) xRadius: bar_height/2.0 yRadius: bar_height/2.0];
+                // Draw background rounded rect
+                let bg_rect = NSRectFromDoubles(bar_x, bar_y, bar_w, bar_height);
+                let rounded_rect_bg: *mut AnyObject = msg_send![class!(NSBezierPath),
+                    bezierPathWithRoundedRect: bg_rect 
+                    xRadius: bar_height/2.0 
+                    yRadius: bar_height/2.0];
                 let _: () = msg_send![bg_color, setFill];
                 let _: () = msg_send![rounded_rect_bg, fill];
 
                 // Draw foreground fill rect for progress
-                let rounded_rect_fg: id = msg_send![nsbezier_class, bezierPathWithRoundedRect: NSRectFromDoubles(bar_x, bar_y, fill_w, bar_height) xRadius: bar_height/2.0 yRadius: bar_height/2.0];
+                let fg_rect = NSRectFromDoubles(bar_x, bar_y, fill_w, bar_height);
+                let rounded_rect_fg: *mut AnyObject = msg_send![class!(NSBezierPath),
+                    bezierPathWithRoundedRect: fg_rect 
+                    xRadius: bar_height/2.0 
+                    yRadius: bar_height/2.0];
                 let _: () = msg_send![fg_color, setFill];
                 let _: () = msg_send![rounded_rect_fg, fill];
 
@@ -111,20 +120,17 @@ mod mac {
     }
 
     pub fn clear_dock_progress() {
-        use objc::runtime::Object;
-        use objc::{msg_send, sel, sel_impl};
-
         unsafe {
             ensure_appkit();
-            autoreleasepool(|| {
-                let app: *mut Object = msg_send![class!(NSApplication), sharedApplication];
-                let _dock_tile: *mut Object = msg_send![app, dockTile];
+            autoreleasepool(|_pool| {
+                let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
 
                 if let Some(icon_data) = &*ORIGINAL_ICON.lock().unwrap() {
-                    let nsdata: *mut Object = msg_send![class!(NSData), dataWithBytes: icon_data.as_ptr()
-                                                         length: icon_data.len()];
-                    let image: *mut Object = msg_send![class!(NSImage), alloc];
-                    let image: *mut Object = msg_send![image, initWithData: nsdata];
+                    let nsdata: *mut NSObject = msg_send![class!(NSData), 
+                        dataWithBytes: icon_data.as_ptr(),
+                        length: icon_data.len()];
+                    let image: *mut NSImage = msg_send![class!(NSImage), alloc];
+                    let image: *mut NSImage = msg_send![image, initWithData: nsdata];
 
                     if !image.is_null() {
                         let _: () = msg_send![app, setApplicationIconImage: image];
