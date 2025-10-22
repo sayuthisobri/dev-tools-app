@@ -100,11 +100,23 @@ pub async fn profiles_from_file(path: &PathBuf) -> Vec<String> {
     profiles
 }
 
+pub mod commands {
+    use crate::errors::ApiResult;
+    use crate::services::aws;
+    use crate::utils::expand_tilde;
+    use tauri::command;
+
+    #[command(async)]
+    pub async fn aws_profiles(path: &str) -> ApiResult<Vec<String>> {
+        Ok(aws::profiles_from_file(&expand_tilde(path)).await)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::errors::aws_error::AwsResult;
     use crate::services::aws::{profiles_from_file, AwsClient};
-    use crate::utils::init_test_logger;
+    use crate::utils::{expand_tilde, init_test_logger};
     use log::LevelFilter::Debug;
     use std::path::PathBuf;
     use tracing::debug;
@@ -136,7 +148,6 @@ mod test {
 
     #[tokio::test]
     async fn test_profiles_from_file() {
-        use crate::services::kube_config::expand_tilde;
         let profiles = profiles_from_file(&PathBuf::from(expand_tilde("~/.aws/config"))).await;
         println!("{:?}", profiles);
     }

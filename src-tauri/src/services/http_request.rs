@@ -465,3 +465,19 @@ where
         }
     }
 }
+
+
+pub mod commands{
+    use super::*;
+    use crate::errors::ApiResult;
+    use tauri::command;
+
+    #[command(async)]
+    pub async fn http_send_request(
+        req: HTTPRequest,
+        timeout: Option<RequestTimeout>,
+    ) -> ApiResult<HTTPResponse> {
+        dbg!(req.clone());
+        Ok(request(req, timeout).await?)
+    }
+}

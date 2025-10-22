@@ -177,6 +177,7 @@ impl AwsClient {
         Ok(self
             .get_s3_client()
             .list_buckets()
+            .max_buckets(500)
             .send()
             .await
             .map(|o| o.into())?)
@@ -201,5 +202,27 @@ impl AwsClient {
             .send()
             .await
             .map(|o| S3ObjectMetadata::from(o))?)
+    }
+}
+
+pub mod commands {
+    use super::*;
+    use crate::errors::ApiResult;
+    use crate::services::aws;
+    use tauri::command;
+
+
+    #[command(async)]
+    pub async fn aws_s3_buckets(profile: &str) -> ApiResult<PageableList<S3Bucket>> {
+        let mut client = aws::AwsClient::get(profile).await?;
+        client.prepare_s3().await;
+        Ok(client.list_buckets().await?)
+    }
+
+    #[command(async)]
+    pub async fn aws_s3_objects(profile: &str, bucket: &str) -> ApiResult<PageableList<S3Object>> {
+        let mut client = aws::AwsClient::get(profile).await?;
+        client.prepare_s3().await;
+        Ok(client.list_objects(bucket).await?)
     }
 }

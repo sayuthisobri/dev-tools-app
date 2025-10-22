@@ -2,9 +2,11 @@ mod core;
 mod nodes;
 mod wsdl;
 mod xml;
+pub(crate) mod progress_helper;
 
 pub use core::*;
 use log::LevelFilter;
+use std::path::{Path, PathBuf};
 use tauri::{Monitor, Window};
 
 pub fn get_current_monitor(w: &Window) -> Result<Monitor> {
@@ -21,4 +23,26 @@ pub fn init_test_logger(level_filter: LevelFilter) {
         .is_test(true)
         .filter_level(level_filter)
         .try_init();
+}
+
+
+pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
+    let p = path.as_ref();
+    if let Some(str_path) = p.to_str() {
+        if str_path == "~" || str_path.starts_with("~/") {
+            if let Some(home) = dirs_next::home_dir() {
+                // remove the leading "~" or "~/" and join the rest
+                let mut rest = &str_path[1..]; // e.g., "~/foo" -> "/foo" or "~" -> ""
+                if rest.starts_with('/') {
+                    rest = &rest[1..];
+                }
+                return if rest.is_empty() {
+                    home
+                } else {
+                    home.join(rest)
+                };
+            }
+        }
+    }
+    p.to_path_buf()
 }

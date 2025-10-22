@@ -1,5 +1,5 @@
 'use client'
-import React, {useEffect, useRef, useState} from 'react'
+import React, {useEffect, useRef} from 'react'
 import {PageTitle} from '@/components/ui/typography'
 import Button from '@/components/ui/button'
 import {startDrag} from '@crabnebula/tauri-plugin-drag'
@@ -25,9 +25,13 @@ import {invoke} from '@tauri-apps/api/core'
 import html2canvas from 'html2canvas-pro'
 import {Grid, IColumnConfig} from '@svar-ui/react-grid'
 import {WillowDark} from '@svar-ui/react-core'
+import {useAwsStore} from '@/stores/aws'
+import {useFilesPageStore} from '@/stores/files'
 
 function SetupRemoteForm({className, ...props}: React.ComponentProps<'form'>) {
   const log = debug('setup-remote')
+  const {profile, setProfile, profiles, setProfiles, s3Buckets, setS3Buckets} = useAwsStore();
+  const {setNewDialogOpen} = useFilesPageStore()
   const schema = z.object({
     type: z.enum(['sftp', 's3']),
     host: z.string().min(5, {
@@ -43,27 +47,39 @@ function SetupRemoteForm({className, ...props}: React.ComponentProps<'form'>) {
     resolver: zodResolver(schema),
     defaultValues: {
       type: 's3',
-      host: '',
+      profile: profile || '',
+      host: 'msms.work:22',
       port: 22,
       username: '',
       password: '',
       key: '',
     },
   })
-  const [profiles, setProfiles] = useState<string[]>([])
   useEffect(() => {
     async function loadProfiles() {
-      const profiles = await invoke('aws_profiles', {path: '~/.aws/config'})
-      setProfiles(Array.isArray(profiles) ? profiles : [])
-      log('profiles', profiles)
+      invoke('aws_profiles', {path: '~/.aws/config'})
+        .then(profiles => {
+          setProfiles(Array.isArray(profiles) ? profiles : [])
+          log('profiles', profiles)
+        })
     }
 
     loadProfiles().then()
   }, [])
 
-  function onSubmit(values: z.infer<typeof schema>) {
+  async function onSubmit(values: z.infer<typeof schema>) {
     log('onSubmit', values)
+    if (values.type == 's3' && values.profile) {
+      log('retrieve buckets')
+      setProfile(values.profile)
+      invoke('aws_s3_buckets', {profile: values.profile})
+        .then((b:any)=>{
+          log('buckets', b)
+          setS3Buckets(Array.isArray(b.items) ? b.items : [])
+        })
+    }
     form.reset(values)
+    setNewDialogOpen(false)
   }
 
   return (
@@ -88,6 +104,8 @@ function SetupRemoteForm({className, ...props}: React.ComponentProps<'form'>) {
             </FormItem>
           )}
         />
+        {/*<pre>{JSON.stringify(form.getValues())}</pre>*/}
+        {/*<pre>{JSON.stringify(form.formState.isValid)}</pre>*/}
         {form.watch('type') === 's3' && <>
           <FormField
             control={form.control}
@@ -158,13 +176,15 @@ function SetupRemoteForm({className, ...props}: React.ComponentProps<'form'>) {
               </FormItem>
             )}
           /></>}
-        <Button className="btn btn-sm" variant={'primary'} type="submit">Connect</Button>
+        <Button className="btn btn-sm" type="submit">Connect</Button>
       </form>
     </Form>
   )
 }
 
 export default function FilesPage(): React.ReactNode {
+  const {isNewDialogOpen, setNewDialogOpen} = useFilesPageStore()
+  const {s3Buckets} = useAwsStore();
 
   async function onDragStart(e: React.DragEvent<HTMLOrSVGElement>) {
     e.preventDefault()
@@ -215,45 +235,50 @@ export default function FilesPage(): React.ReactNode {
   return (
     <div className="flex m-2 flex-col gap-2">
       <PageTitle>Remote Files</PageTitle>
-      <div className="flex gap-2">
-        <Dialog defaultOpen={true}>
-          <DialogTrigger asChild>
-            <Button variant="outline">New</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]" aria-describedby="setup-remote-form">
-            <DialogHeader>
-              <DialogTitle>New remote</DialogTitle>
-              <DialogDescription>
-                Setup new remote configuration you wish to connect.
-              </DialogDescription>
-            </DialogHeader>
-            <SetupRemoteForm/>
-          </DialogContent>
-        </Dialog>
+      <div className="flex justify-between">
+        <div className="flex gap-2">
+          <Dialog open={isNewDialogOpen} onOpenChange={setNewDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">New</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]" aria-describedby="setup-remote-form">
+              <DialogHeader>
+                <DialogTitle>New remote</DialogTitle>
+                <DialogDescription>
+                  Setup new remote configuration you wish to connect.
+                </DialogDescription>
+              </DialogHeader>
+              <SetupRemoteForm/>
+            </DialogContent>
+          </Dialog>
 
-        <div ref={elementRef} draggable={true} onDragStart={onDragStart}>
-          <FileArchiveIcon/>
+          <div ref={elementRef} draggable={true} onDragStart={onDragStart}>
+            <FileArchiveIcon/>
+          </div>
+
+          <div draggable={true} onDrop={e => {
+            console.log('drop', e, e.target)
+          }} onDragStart={onDragStart}>
+            <Button onClick={async e => {
+              e.preventDefault()
+              const res = await open({
+                multiple: true,
+                directory: true,
+              })
+
+              console.log('selected', res)
+            }}>
+              <FileIcon className="text-red-200"/>
+            </Button>
+          </div>
         </div>
-
-        <div draggable={true} onDrop={e => {
-          console.log('drop', e, e.target)
-        }} onDragStart={onDragStart}>
-          <Button onClick={async e => {
-            e.preventDefault()
-            const res = await open({
-              multiple: true,
-              directory: true,
-            })
-
-            console.log('selected', res)
-          }}>
-            <FileIcon className="text-red-200"/>
-          </Button>
+        <div className="flex">
+          <Combobox data={[...s3Buckets.map(b => ({label: b.name, value: b.name}))]} placeholder="Select bucket"/>
         </div>
       </div>
       <div>
 
-        <div className={""}>
+        <div className={''}>
           <WillowDark>
             <Grid data={data} columns={columns} reorder={false}/>
           </WillowDark>

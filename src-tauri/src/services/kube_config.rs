@@ -1,30 +1,9 @@
+use crate::utils::expand_tilde;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
 
-use std::path::PathBuf;
-
-pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
-    let p = path.as_ref();
-    if let Some(str_path) = p.to_str() {
-        if str_path == "~" || str_path.starts_with("~/") {
-            if let Some(home) = dirs_next::home_dir() {
-                // remove the leading "~" or "~/" and join the rest
-                let mut rest = &str_path[1..]; // e.g., "~/foo" -> "/foo" or "~" -> ""
-                if rest.starts_with('/') {
-                    rest = &rest[1..];
-                }
-                return if rest.is_empty() {
-                    home
-                } else {
-                    home.join(rest)
-                };
-            }
-        }
-    }
-    p.to_path_buf()
-}
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
@@ -245,5 +224,22 @@ users:
         // This should fail to parse due to missing required arrays
         let res = load_kubeconfig(f.path());
         assert!(res.is_err());
+    }
+}
+
+
+
+pub mod commands {
+    use crate::errors::ApiResult;
+    use crate::services::kube_config;
+    use tauri::command;
+
+    #[command]
+    pub fn load_kube_config(
+        path: &str,
+        app: tauri::AppHandle,
+        window: tauri::Window,
+    ) -> ApiResult<kube_config::KubeConfig> {
+        Ok(kube_config::load_kubeconfig(kube_config::expand_tilde(path)).expect("load kubeconfig"))
     }
 }

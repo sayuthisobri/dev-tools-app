@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button'
 import {toast} from 'sonner'
 import {useAppStore} from '@/stores'
 import {PageTitle} from '@/components/ui/typography'
+import {invoke} from '@tauri-apps/api/core'
 
 export default function SettingPage(): React.ReactNode {
   const {toggleDarkMode, setTitle} = useAppStore()
@@ -62,8 +63,9 @@ export default function SettingPage(): React.ReactNode {
             })
           }}>Loading</Button>
         <Button
-          onClick={() => {
+          onClick={async () => {
             setTitle('Iman Noah | MSMS')
+            await invoke('test_dock_progress')
           }}>Set Title</Button>
         <Button
           onClick={() => {
