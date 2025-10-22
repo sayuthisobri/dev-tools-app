@@ -9,7 +9,7 @@ pub mod tty {
         time::Duration,
     };
     use tauri::Emitter;
-    use tracing::{error, info, warn};
+    use tracing::info;
     use uuid::Uuid;
 
     struct TerminalSession {

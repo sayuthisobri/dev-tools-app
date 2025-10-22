@@ -1,4 +1,3 @@
-#[allow(dead_code, unused_imports)]
 // use crate::cookies;
 use crate::errors::APIError;
 use anyhow::{Context, Result};

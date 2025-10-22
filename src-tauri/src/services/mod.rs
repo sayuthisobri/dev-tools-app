@@ -1,15 +1,14 @@
-mod request;
-pub mod kube_config;
-pub mod kube;
+#![allow(dead_code)]
+
 pub mod aws;
 pub mod aws_s3;
-pub mod kube_log;
-pub mod shell;
-pub mod http_request;
 pub mod dock_progress;
-
-#[allow(unused_imports)]
-pub use request::*;
+pub mod http_request;
+pub mod kube;
+pub mod kube_config;
+pub mod kube_log;
+pub mod request;
+pub mod shell;
 
 
 pub mod commands {
@@ -34,4 +33,3 @@ pub mod commands {
         ]
     }
 }
-

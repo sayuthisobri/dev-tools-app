@@ -11,8 +11,7 @@ use std::sync::{Arc, Mutex};
 use tauri::{menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder}, App, Builder, Emitter, Manager, Window, WindowEvent, Wry};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-#[allow(unused_imports)]
-use window_vibrancy::apply_blur;
+// use window_vibrancy::apply_blur;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 fn init_plugins(builder: Builder<Wry>) -> Builder<Wry>{

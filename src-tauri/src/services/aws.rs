@@ -116,14 +116,15 @@ pub mod commands {
 mod test {
     use crate::errors::aws_error::AwsResult;
     use crate::services::aws::{profiles_from_file, AwsClient};
-    use crate::utils::{expand_tilde, init_test_logger};
+    use crate::utils;
+    use crate::utils::expand_tilde;
     use log::LevelFilter::Debug;
     use std::path::PathBuf;
     use tracing::debug;
 
     #[tokio::test]
     async fn test_get_s3_buckets() -> AwsResult<()> {
-        init_test_logger(Debug);
+        utils::test::init_test_logger(Debug);
         let mut client = AwsClient::get("CloudEngineer-411632713503").await?;
         // let mut client = AwsClient::get("reldyn").await?;
         client.prepare_s3().await;

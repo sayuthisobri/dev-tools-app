@@ -1,10 +1,11 @@
+#![allow(dead_code)]
+
 use crate::utils::*;
 use bon::Builder;
 use reqwest::redirect::Policy;
 use reqwest::{ClientBuilder, Method, Url};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-
 #[derive(Builder, Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Req {
     pub url: String,

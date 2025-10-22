@@ -74,9 +74,9 @@ mod mac {
                 // Draw the existing icon into it
                 let source_rect = NSRect::new(NSPoint::new(0.0, 0.0), size);
                 let dest_rect = NSRectFromInts(0, 0, width as i32, height as i32);
-                let _: () = msg_send![icon, drawInRect: dest_rect
-                                            fromRect: source_rect
-                                           operation: 1 // NSCompositeSourceOver
+                let _: () = msg_send![icon, drawInRect: dest_rect,
+                                            fromRect: source_rect,
+                                           operation: 1, // NSCompositeSourceOver
                                             fraction: 1.0];
 
                 // Calculate progress bar geometry (simple bar at bottom)
@@ -89,14 +89,14 @@ mod mac {
 
                 // Draw background (semi-transparent dark rounded rect)
                 let bg_color: *mut NSColor =
-                    msg_send![class!(NSColor), colorWithCalibratedWhite: 0.0 alpha: 0.55];
-                let fg_color: *mut NSColor = msg_send![class!(NSColor), colorWithCalibratedRed: 0.19 green: 0.66 blue: 0.33 alpha: 1.0]; // green-ish
+                    msg_send![class!(NSColor), colorWithCalibratedWhite: 0.0, alpha: 0.55];
+                let fg_color: *mut NSColor = msg_send![class!(NSColor), colorWithCalibratedRed: 0.19, green: 0.66, blue: 0.33, alpha: 1.0]; // green-ish
 
                 // Draw background rounded rect
                 let bg_rect = NSRectFromDoubles(bar_x, bar_y, bar_w, bar_height);
                 let rounded_rect_bg: *mut AnyObject = msg_send![class!(NSBezierPath),
-                    bezierPathWithRoundedRect: bg_rect 
-                    xRadius: bar_height/2.0 
+                    bezierPathWithRoundedRect: bg_rect,
+                    xRadius: bar_height/2.0,
                     yRadius: bar_height/2.0];
                 let _: () = msg_send![bg_color, setFill];
                 let _: () = msg_send![rounded_rect_bg, fill];
@@ -104,8 +104,8 @@ mod mac {
                 // Draw foreground fill rect for progress
                 let fg_rect = NSRectFromDoubles(bar_x, bar_y, fill_w, bar_height);
                 let rounded_rect_fg: *mut AnyObject = msg_send![class!(NSBezierPath),
-                    bezierPathWithRoundedRect: fg_rect 
-                    xRadius: bar_height/2.0 
+                    bezierPathWithRoundedRect: fg_rect,
+                    xRadius: bar_height/2.0,
                     yRadius: bar_height/2.0];
                 let _: () = msg_send![fg_color, setFill];
                 let _: () = msg_send![rounded_rect_fg, fill];

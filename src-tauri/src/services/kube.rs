@@ -9,7 +9,6 @@ pub struct KubeClient {
     client: kube::Client,
 }
 
-#[allow(unused)]
 impl KubeClient {
     pub async fn new(context: Option<String>) -> KubeResult<KubeClient> {
         let client = get_client(context).await?;
@@ -28,7 +27,6 @@ impl KubeClient {
     }
 }
 
-#[allow(unused)]
 async fn get_client(context: Option<String>) -> KubeResult<kube::Client> {
     debug!("env KUBECONFIG: {:?}", std::env::var_os("KUBECONFIG"));
     let client_config = match context.as_ref() {
@@ -64,7 +62,7 @@ mod kube_test {
     use log::*;
 
     fn init_logger(level: Option<LevelFilter>) {
-        utils::init_test_logger(level.or(Some(Debug)).expect("no debug log level set"));
+        utils::test::init_test_logger(level.or(Some(Debug)).expect("no debug log level set"));
     }
 
     #[tokio::test]

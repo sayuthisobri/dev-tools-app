@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod api_error;
 pub mod aws_error;
 pub mod kube_error;

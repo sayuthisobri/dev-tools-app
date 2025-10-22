@@ -2,7 +2,6 @@ use aws_sdk_s3::error::SdkError;
 use serde::Serialize;
 
 pub type AwsResult<T> = anyhow::Result<T, AwsError>;
-
 #[derive(Debug, thiserror::Error, Serialize)]
 pub enum AwsError {
     #[error("[Config] {0}")]

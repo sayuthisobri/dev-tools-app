@@ -1,11 +1,13 @@
+#![allow(dead_code)]
+
 mod core;
 mod nodes;
+pub(crate) mod progress_helper;
 mod wsdl;
 mod xml;
-pub(crate) mod progress_helper;
+
 
 pub use core::*;
-use log::LevelFilter;
 use std::path::{Path, PathBuf};
 use tauri::{Monitor, Window};
 
@@ -17,14 +19,6 @@ pub fn get_current_monitor(w: &Window) -> Result<Monitor> {
 pub fn get_current_monitor_name(w: &Window) -> Result<String> {
     Ok(get_current_monitor(w)?.name().unwrap().to_string())
 }
-
-pub fn init_test_logger(level_filter: LevelFilter) {
-    let _ = env_logger::builder()
-        .is_test(true)
-        .filter_level(level_filter)
-        .try_init();
-}
-
 
 pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
     let p = path.as_ref();
@@ -45,4 +39,16 @@ pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
         }
     }
     p.to_path_buf()
+}
+
+
+#[cfg(test)]
+pub(crate) mod test {
+    use log::LevelFilter;
+    pub fn init_test_logger(level_filter: LevelFilter) {
+        let _ = env_logger::builder()
+            .is_test(true)
+            .filter_level(level_filter)
+            .try_init();
+    }
 }

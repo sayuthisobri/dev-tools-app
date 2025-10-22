@@ -6,7 +6,6 @@ use std::path::Path;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 pub struct KubeConfig {
     #[serde(rename = "current-context")]
     pub current_context: Option<String>,
@@ -23,14 +22,12 @@ pub struct KubeConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct NamedContext {
     pub name: String,
     pub context: Context,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(dead_code)]
 pub struct Context {
     pub cluster: String,
     pub user: String,
@@ -38,14 +35,12 @@ pub struct Context {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(dead_code)]
 pub struct NamedCluster {
     pub name: String,
     pub cluster: ClusterInfo,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(dead_code)]
 pub struct ClusterInfo {
     pub server: String,
     #[serde(rename = "certificate-authority")]
@@ -57,14 +52,12 @@ pub struct ClusterInfo {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(dead_code)]
 pub struct NamedUser {
     pub name: String,
     pub user: User,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(dead_code)]
 pub struct User {
     pub token: Option<String>,
     #[serde(rename = "client-certificate")]
@@ -78,7 +71,6 @@ pub struct User {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(dead_code)]
 #[serde(rename_all = "camelCase")]
 pub struct UserExecConfig {
     pub command: String,
@@ -90,7 +82,6 @@ pub struct UserExecConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(dead_code)]
 pub struct ExecEnvVar {
     pub name: String,
     pub value: String,
@@ -99,7 +90,6 @@ pub struct ExecEnvVar {
 /// Load a kubeconfig from a local path and parse it into KubeConfig.
 ///
 /// Returns Err if the file can't be read or YAML is invalid.
-#[allow(dead_code)]
 pub fn load_kubeconfig<P: AsRef<Path>>(path: P) -> Result<KubeConfig, Box<dyn std::error::Error>> {
     let data = fs::read_to_string(expand_tilde(&path))
         .expect(format!("Unable to read kubeconfig file: {:?}", &path.as_ref()).as_str());
@@ -107,7 +97,6 @@ pub fn load_kubeconfig<P: AsRef<Path>>(path: P) -> Result<KubeConfig, Box<dyn st
     Ok(cfg)
 }
 
-#[allow(dead_code)]
 /// Convenience: get the server URL for the current context, if available.
 pub fn current_context_server(cfg: &KubeConfig) -> Option<String> {
     if let Some(current) = &cfg.current_context {
@@ -125,7 +114,6 @@ pub fn current_context_server(cfg: &KubeConfig) -> Option<String> {
 }
 
 // Helper trait-like methods implemented as inherent methods on KubeConfig via impl blocks
-#[allow(dead_code)]
 impl KubeConfig {
     pub fn context_entry_by_name(&self, name: &str) -> Option<&NamedContext> {
         self.contexts.iter().find(|c| c.name == name)
@@ -237,8 +225,8 @@ pub mod commands {
     #[command]
     pub fn load_kube_config(
         path: &str,
-        app: tauri::AppHandle,
-        window: tauri::Window,
+        // app: tauri::AppHandle,
+        // window: tauri::Window,
     ) -> ApiResult<kube_config::KubeConfig> {
         Ok(kube_config::load_kubeconfig(kube_config::expand_tilde(path)).expect("load kubeconfig"))
     }
