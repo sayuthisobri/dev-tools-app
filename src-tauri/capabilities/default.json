@@ -19,6 +19,7 @@
     "shellx:allow-stdin-write",
     "shellx:allow-execute",
     "system-info:allow-all",
-    "drag:default"
+    "drag:default",
+    "dialog:default"
   ]
 }
