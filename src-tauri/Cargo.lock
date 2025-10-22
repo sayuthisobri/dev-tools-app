@@ -3888,6 +3888,7 @@ dependencies = [
  "futures-core",
  "k8s-openapi",
  "kube",
+ "lazy_static",
  "libflate",
  "log",
  "ms-util",
