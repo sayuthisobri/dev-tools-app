@@ -9,7 +9,6 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::collections::HashMap;
 
-
 #[derive(Serialize, Debug, Clone)]
 pub struct S3Bucket {
     /// <p>The name of the bucket.</p>
@@ -212,9 +211,9 @@ pub mod commands {
     use crate::services::aws;
     use tauri::command;
 
-
     #[command(async)]
     pub async fn aws_s3_buckets(profile: &str) -> ApiResult<PageableList<S3Bucket>> {
+        tracing::log::info!("Starting aws_s3 buckets: {}", profile);
         let mut client = aws::AwsClient::get(profile).await?;
         client.prepare_s3().await;
         Ok(client.list_buckets().await?)

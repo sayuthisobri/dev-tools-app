@@ -105,9 +105,11 @@ pub mod commands {
     use crate::services::aws;
     use crate::utils::expand_tilde;
     use tauri::command;
+    use tracing::log;
 
     #[command(async)]
     pub async fn aws_profiles(path: &str) -> ApiResult<Vec<String>> {
+        log::info!("Starting aws profile list");
         Ok(aws::profiles_from_file(&expand_tilde(path)).await)
     }
 }

@@ -60,6 +60,7 @@ uuid = { version = "1.11.0", features = ["v4"] }
 thiserror = "2.0.17"
 portable-pty = "0.9.0"
 lazy_static = "1.5.0"
+tauri-plugin-log = "2"
 
 [dev-dependencies]
 tempfile = "3.23.0"  # for tests with temporary files

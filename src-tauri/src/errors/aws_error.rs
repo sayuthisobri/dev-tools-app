@@ -33,11 +33,11 @@ impl<E, R> From<SdkError<E, R>> for AwsError {
     fn from(value: SdkError<E, R>) -> Self {
         match &value {
             SdkError::DispatchFailure(f) => {
-                if f.is_io(){
+                if f.is_io() {
                     AwsError::Io(value.to_string())
-                }else if f.is_timeout(){
+                } else if f.is_timeout() {
                     AwsError::Timeout(value.to_string())
-                }else{
+                } else {
                     AwsError::General(value.to_string())
                 }
             }

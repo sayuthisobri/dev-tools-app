@@ -1,7 +1,7 @@
 "use client";
 
-import Button from "@/components/ui/button";
-import { Combobox, ValueData } from "@/components/ui/combobox";
+import Button from '@/components/ui/button';
+import {Combobox, ValueData} from '@/components/ui/combobox';
 import {
   Drawer,
   DrawerClose,
@@ -11,22 +11,17 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@/components/ui/drawer";
-import { PageTitle } from "@/components/ui/typography";
-import { InfoIcon, RefreshCwIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import { Command } from "tauri-plugin-shellx-api";
-import { loadKubeConfig, NamedContext } from "./api";
-import { debounce } from "lodash";
-import { useKubeStore } from "@/stores/kube";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { HoverCard, HoverCardContent } from "@/components/ui/hover-card";
-import { HoverCardTrigger } from "@radix-ui/react-hover-card";
+} from '@/components/ui/drawer';
+import {PageTitle} from '@/components/ui/typography';
+import {RefreshCwIcon} from 'lucide-react';
+import {useEffect, useMemo} from 'react';
+import {toast} from 'sonner';
+import {Command} from 'tauri-plugin-shellx-api';
+import {loadKubeConfig, NamedContext} from './api';
+import {debounce} from 'lodash';
+import {useKubeStore} from '@/stores/kube';
+import {HoverCard, HoverCardContent} from '@/components/ui/hover-card';
+import {HoverCardTrigger} from '@radix-ui/react-hover-card';
 
 function DrawerDemo() {
   return (
@@ -220,10 +215,11 @@ export default function KubePage() {
                 if (x.code !== 0) {
                   throw x;
                 }
-                console.info("Response:", JSON.parse(x.stdout) || x.stderr);
+                console.info("Response:", x.stdout || x.stderr);
                 return `${x.code}: ${x.stdout || x.stderr}`;
               })
               .catch((x) => {
+                console.error("Error:", x.stderr);
                 throw x.stderr || x?.toString();
               });
             toast.promise(res, {

@@ -4,14 +4,14 @@ import {Button} from '@/components/ui/button'
 import {toast} from 'sonner'
 import {useAppStore} from '@/stores'
 import {PageTitle} from '@/components/ui/typography'
-import {invoke} from '@tauri-apps/api/core'
+import {run} from '@/lib/utils'
 
 export default function SettingPage(): React.ReactNode {
   const {toggleDarkMode, setTitle} = useAppStore()
   return (
     <div className={'m-2 flex flex-col gap-2'}>
       <PageTitle>Settings</PageTitle>
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Button
           variant={'primary'}
           onClick={() => {
@@ -65,12 +65,23 @@ export default function SettingPage(): React.ReactNode {
         <Button
           onClick={async () => {
             setTitle('Iman Noah | MSMS')
-            await invoke('test_dock_progress')
           }}>Set Title</Button>
         <Button
           onClick={() => {
             toggleDarkMode()
           }}>Toggle dark mode</Button>
+        <Button
+          onClick={async () => {
+            await run('test_dock_progress')
+          }}>Test progress bar</Button>
+        <Button
+          onClick={async () => {
+            await run('set_dock_badge', {label: `${Math.round(Math.random() * 100)}`})
+          }}>Set Badge</Button>
+        <Button
+          onClick={async () => {
+            await run('clear_dock_badge')
+          }}>Clear Badge</Button>
       </div>
     </div>
   )

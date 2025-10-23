@@ -2,6 +2,7 @@ use crate::errors::kube_error::KubeError;
 use crate::errors::AwsError;
 use anyhow::Error;
 use serde::Serialize;
+use std::env::VarError;
 use tauri::http::uri::InvalidUri;
 use zip::result::ZipError;
 
@@ -26,7 +27,11 @@ pub enum APIError {
 }
 
 pub type ApiResult<T> = anyhow::Result<T, APIError>;
-
+impl From<VarError> for APIError{
+    fn from(value: VarError) -> Self {
+        APIError::General(value.to_string())
+    }
+}
 impl From<reqwest::Error> for APIError {
     fn from(error: reqwest::Error) -> Self {
         APIError::Http(error.to_string())

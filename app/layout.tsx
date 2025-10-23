@@ -10,13 +10,15 @@ import {Toaster} from '@/components/ui/sonner'
 import Titlebar from '@/components/ui/title-bar'
 import {CommandMenu} from '@/app/command'
 import {listen} from '@tauri-apps/api/event'
-import {isWebMode} from '@/lib/utils'
+import {isWebMode, stringifyWithRefs} from '@/lib/utils'
 import {useRouter} from 'next/navigation'
 import {currentMonitor, getCurrentWindow, PhysicalPosition} from '@tauri-apps/api/window'
 import {useFileDrop} from '@/hooks/file-drop'
 import {MyTransition} from '@/app/page-transition'
 
+import {debug, error, info, trace, warn} from '@tauri-apps/plugin-log';
 import '@svar-ui/react-grid/all.css';
+import {isObjectLike} from 'lodash'
 
 const geistSans = localFont({
   src: '../assets/fonts/GeistVF.woff',
@@ -36,6 +38,26 @@ export default function RootLayout({
   const router = useRouter()
 
   async function init() {
+
+    function forwardConsole(
+      fnName: 'log' | 'debug' | 'info' | 'warn' | 'error',
+      logger: (message: string) => Promise<void>,
+    ) {
+      const original = console[fnName];
+      console[fnName] = (...message) => {
+        original(...message);
+        logger(message.map(m => isObjectLike(m) ? stringifyWithRefs(m) : m).join(', ')).then();
+      };
+    }
+
+    if (!(console as any)['is-init']) {
+      forwardConsole('log', trace);
+      forwardConsole('debug', debug);
+      forwardConsole('info', info);
+      forwardConsole('warn', warn);
+      forwardConsole('error', error);
+      (console as any)['is-init'] = true;
+    }
     const monitor = await currentMonitor()
     if (monitor != null) {
       const currentWindow = getCurrentWindow()

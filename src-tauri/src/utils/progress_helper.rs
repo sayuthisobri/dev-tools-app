@@ -3,6 +3,7 @@
 
 #[cfg(target_os = "macos")]
 mod mac {
+    use objc2::ffi::nil;
     use objc2::rc::autoreleasepool;
     use objc2::runtime::{AnyObject, NSObject};
     use objc2::{class, msg_send};
@@ -140,6 +141,23 @@ mod mac {
         }
     }
 
+    pub fn set_dock_badge(label: &str) {
+        unsafe {
+            ensure_appkit();
+            autoreleasepool(|_pool| {
+                let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+                let dock_tile: *mut AnyObject = msg_send![app, dockTile];
+                if !dock_tile.is_null() {
+                    let _: () = msg_send![dock_tile, setBadgeLabel: if label.is_empty() { nil } else { msg_send![class!(NSString), stringWithUTF8String: label.as_ptr() as *const i8] }];
+                }
+            });
+        }
+    }
+
+    pub fn clear_dock_badge() {
+        set_dock_badge("")
+    }
+
     // Helper functions to construct NSRect and similar using objc runtime calls require bridging types.
     // For brevity, helper constructors below:
 
@@ -156,7 +174,7 @@ mod mac {
 }
 
 #[cfg(target_os = "macos")]
-pub use mac::{clear_dock_progress, set_dock_progress_fraction};
+pub use mac::{clear_dock_badge, clear_dock_progress, set_dock_badge, set_dock_progress_fraction};
 
 #[cfg(not(target_os = "macos"))]
 pub fn set_dock_progress_fraction(_fraction: f64) {
@@ -164,3 +182,7 @@ pub fn set_dock_progress_fraction(_fraction: f64) {
 }
 #[cfg(not(target_os = "macos"))]
 pub fn clear_dock_progress() {}
+#[cfg(not(target_os = "macos"))]
+pub fn set_dock_badge(_label: &str) {}
+#[cfg(not(target_os = "macos"))]
+pub fn clear_dock_badge() {}

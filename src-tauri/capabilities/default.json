@@ -20,6 +20,7 @@
     "shellx:allow-execute",
     "system-info:allow-all",
     "drag:default",
-    "dialog:default"
+    "dialog:default",
+    "log:default"
   ]
 }

@@ -465,8 +465,7 @@ where
     }
 }
 
-
-pub mod commands{
+pub mod commands {
     use super::*;
     use crate::errors::ApiResult;
     use tauri::command;

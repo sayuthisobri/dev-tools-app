@@ -1,5 +1,5 @@
 pub mod commands {
-    use crate::utils::progress_helper::*;
+    use crate::utils::progress_helper;
     use tauri::command;
 
     #[command]
@@ -7,13 +7,13 @@ pub mod commands {
         if !(0.0..=1.0).contains(&progress) {
             return Err("Progress must be between 0.0 and 1.0".to_string());
         }
-        set_dock_progress_fraction(progress);
+        progress_helper::set_dock_progress_fraction(progress);
         Ok(())
     }
 
     #[command]
     pub fn clear_dock() -> Result<(), String> {
-        clear_dock_progress();
+        progress_helper::clear_dock_progress();
         Ok(())
     }
 
@@ -36,6 +36,18 @@ pub mod commands {
         // Clear the progress
         clear_dock()?;
 
+        Ok(())
+    }
+
+    #[command]
+    pub fn set_dock_badge(label: &str) -> Result<(), String> {
+        progress_helper::set_dock_badge(label);
+        Ok(())
+    }
+
+    #[command]
+    pub fn clear_dock_badge() -> Result<(), String> {
+        progress_helper::clear_dock_badge();
         Ok(())
     }
 }

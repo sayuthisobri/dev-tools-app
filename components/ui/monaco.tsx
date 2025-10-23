@@ -1,8 +1,8 @@
 'use client'
-import React, { useEffect, useRef, useState } from 'react'
-import { Editor, EditorProps, Monaco as _monaco } from '@monaco-editor/react'
-import { editor as editorNS } from 'monaco-editor'
-import { debounce } from 'lodash'
+import React, {useEffect, useRef, useState} from 'react'
+import {Editor, EditorProps, Monaco as _monaco} from '@monaco-editor/react'
+import {editor as editorNS} from 'monaco-editor'
+import {debounce} from 'lodash'
 
 // loader.config({monaco: _monaco})
 
@@ -29,7 +29,7 @@ export default function Monaco({height, defaultLanguage, theme, ...props}: Edito
   }, [editorRef, editor])
 
   function onMount(editor: editorNS.IStandaloneCodeEditor, monaco: _monaco) {
-    console.log('onMount', editor, monaco)
+    // console.log('onMount', editor, monaco)
     setEditor(editor)
     monaco.editor.defineTheme('vs-dark', {
       base: 'vs-dark', // can also be vs-dark or hc-black

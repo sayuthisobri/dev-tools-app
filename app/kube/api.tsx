@@ -1,10 +1,9 @@
-import { run } from '@/lib/utils'
-import { invoke } from "@tauri-apps/api/core"
+import {run} from '@/lib/utils'
 
 export const loadKubeConfig: (
   path?: string
 ) => Promise<KubeConfig | undefined> = async (path = "~/.kube/config") => {
-  return await run<KubeConfig>("load_kubeconfig", {
+  return await run<KubeConfig>("load_kube_config", {
     path,
   }).then((res: any) => {
     if (res != null && typeof res === "object") {

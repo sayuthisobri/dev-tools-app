@@ -6,7 +6,6 @@ pub(crate) mod progress_helper;
 mod wsdl;
 mod xml;
 
-
 pub use core::*;
 use std::path::{Path, PathBuf};
 use tauri::{Monitor, Window};
@@ -40,7 +39,6 @@ pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
     }
     p.to_path_buf()
 }
-
 
 #[cfg(test)]
 pub(crate) mod test {

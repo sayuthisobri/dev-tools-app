@@ -90,7 +90,7 @@ pub struct ExecEnvVar {
 /// Load a kubeconfig from a local path and parse it into KubeConfig.
 ///
 /// Returns Err if the file can't be read or YAML is invalid.
-pub fn load_kubeconfig<P: AsRef<Path>>(path: P) -> Result<KubeConfig, Box<dyn std::error::Error>> {
+pub fn load_kube_config<P: AsRef<Path>>(path: P) -> Result<KubeConfig, Box<dyn std::error::Error>> {
     let data = fs::read_to_string(expand_tilde(&path))
         .expect(format!("Unable to read kubeconfig file: {:?}", &path.as_ref()).as_str());
     let cfg: KubeConfig = serde_yaml::from_str(&data)?;
@@ -158,7 +158,7 @@ users:
         let mut f = NamedTempFile::new().expect("temp file");
         write!(f, "{}", sample_kubeconfig_yaml()).unwrap();
 
-        let cfg = load_kubeconfig(f.path()).expect("parse kubeconfig");
+        let cfg = load_kube_config(f.path()).expect("parse kubeconfig");
 
         assert_eq!(cfg.current_context.as_deref(), Some("minikube"));
         // ensure contexts and clusters parsed
@@ -186,7 +186,7 @@ users:
         let mut f = NamedTempFile::new().expect("temp file");
         write!(f, "{}", sample_kubeconfig_yaml()).unwrap();
 
-        let cfg = load_kubeconfig(expand_tilde(f.path())).expect("parse kubeconfig");
+        let cfg = load_kube_config(expand_tilde(f.path())).expect("parse kubeconfig");
         log::debug!("Loaded kubeconfig: {:?}", cfg);
         // use the helper
         let server = cfg
@@ -210,12 +210,10 @@ users:
         write!(f, "apiVersion: v1\nkind: Config\n").unwrap();
 
         // This should fail to parse due to missing required arrays
-        let res = load_kubeconfig(f.path());
+        let res = load_kube_config(f.path());
         assert!(res.is_err());
     }
 }
-
-
 
 pub mod commands {
     use crate::errors::ApiResult;
@@ -228,6 +226,6 @@ pub mod commands {
         // app: tauri::AppHandle,
         // window: tauri::Window,
     ) -> ApiResult<kube_config::KubeConfig> {
-        Ok(kube_config::load_kubeconfig(kube_config::expand_tilde(path)).expect("load kubeconfig"))
+        Ok(kube_config::load_kube_config(kube_config::expand_tilde(path)).expect("load kubeconfig"))
     }
 }
