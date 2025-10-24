@@ -31,6 +31,7 @@
     "@tauri-apps/plugin-log": "^2.7.0",
     "@tauri-apps/plugin-os": "^2.0.0",
     "@tauri-apps/plugin-window-state": "^2.4.0",
+    "caniuse-lite": "^1.0.30001751",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "1.0.0",
