@@ -176,7 +176,7 @@ function SetupRemoteForm({className, ...props}: React.ComponentProps<'form'>) {
               </FormItem>
             )}
           /></>}
-        <Button className="btn btn-sm" type="submit">Connect</Button>
+        <Button className="px-3 py-1.5 text-sm font-medium rounded-md" type="submit">Connect</Button>
       </form>
     </Form>
   )
