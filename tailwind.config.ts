@@ -1,8 +1,7 @@
 import colors from 'tailwindcss/colors'
 
-import { createThemes } from 'tw-colors'
-
-import { fontFamily } from 'tailwindcss/defaultTheme'
+// import { createThemes } from 'tw-colors'
+import {fontFamily} from 'tailwindcss/defaultTheme'
 
 
 const baseColors = [
@@ -147,7 +146,7 @@ module.exports = {
     },
   },
   plugins: [
-    createThemes(themes),
+    // createThemes(themes),
     require('tailwindcss-animate'),
     require('@tailwindcss/typography'),
     require('tailwind-scrollbar')({nocompatible: true}),
