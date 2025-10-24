@@ -1,6 +1,7 @@
 const isProd = process.env.NODE_ENV === 'production';
 
 const internalHost = process.env.TAURI_DEV_HOST || 'localhost';
+const internalPort = process.env.TAURI_DEV_PORT || '3000';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -13,7 +14,7 @@ const nextConfig = {
     unoptimized: true,
   },
   // Configure assetPrefix or else the server won't properly resolve your assets.
-  assetPrefix: isProd ? "" : `http://${internalHost}:3000`,
+  assetPrefix: isProd ? "" : `http://${internalHost}:${internalPort}`,
 };
 
 export default nextConfig;
