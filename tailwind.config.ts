@@ -1,60 +1,5 @@
-import colors from 'tailwindcss/colors'
-
-// import { createThemes } from 'tw-colors'
 import {fontFamily} from 'tailwindcss/defaultTheme'
 
-
-const baseColors = [
-  'gray',
-  'red',
-  'yellow',
-  'orange',
-  'green',
-  'blue',
-  'indigo',
-  'purple',
-  'pink',
-]
-
-const shadeMapping = {
-  '50': '900',
-  '100': '800',
-  '200': '700',
-  '300': '600',
-  '400': '500',
-  '500': '400',
-  '600': '300',
-  '700': '200',
-  '800': '100',
-  '900': '50',
-}
-
-const generateThemeObject = (colors: any, mapping: any, invert = false) => {
-  const theme: any = {}
-  baseColors.forEach((color) => {
-    theme[color] = {}
-    Object.entries(mapping).forEach(([key, value]) => {
-      const shadeKey: any = invert ? value : key
-      theme[color][key] = colors[color][shadeKey]
-    })
-  })
-  return theme
-}
-
-const lightTheme = generateThemeObject(colors, shadeMapping)
-const darkTheme = generateThemeObject(colors, shadeMapping, true)
-
-const themes = {
-  light: {
-    ...lightTheme,
-    white: '#ffffff',
-  },
-  dark: {
-    ...darkTheme,
-    white: colors.gray['950'],
-    black: colors.gray['50'],
-  },
-}
 
 module.exports = {
   darkMode: 'class',
@@ -119,6 +64,114 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        gray: {
+          50: 'hsl(var(--twc-gray-50))',
+          100: 'hsl(var(--twc-gray-100))',
+          200: 'hsl(var(--twc-gray-200))',
+          300: 'hsl(var(--twc-gray-300))',
+          400: 'hsl(var(--twc-gray-400))',
+          500: 'hsl(var(--twc-gray-500))',
+          600: 'hsl(var(--twc-gray-600))',
+          700: 'hsl(var(--twc-gray-700))',
+          800: 'hsl(var(--twc-gray-800))',
+          900: 'hsl(var(--twc-gray-900))',
+        },
+        red: {
+          50: 'hsl(var(--twc-red-50))',
+          100: 'hsl(var(--twc-red-100))',
+          200: 'hsl(var(--twc-red-200))',
+          300: 'hsl(var(--twc-red-300))',
+          400: 'hsl(var(--twc-red-400))',
+          500: 'hsl(var(--twc-red-500))',
+          600: 'hsl(var(--twc-red-600))',
+          700: 'hsl(var(--twc-red-700))',
+          800: 'hsl(var(--twc-red-800))',
+          900: 'hsl(var(--twc-red-900))',
+        },
+        yellow: {
+          50: 'hsl(var(--twc-yellow-50))',
+          100: 'hsl(var(--twc-yellow-100))',
+          200: 'hsl(var(--twc-yellow-200))',
+          300: 'hsl(var(--twc-yellow-300))',
+          400: 'hsl(var(--twc-yellow-400))',
+          500: 'hsl(var(--twc-yellow-500))',
+          600: 'hsl(var(--twc-yellow-600))',
+          700: 'hsl(var(--twc-yellow-700))',
+          800: 'hsl(var(--twc-yellow-800))',
+          900: 'hsl(var(--twc-yellow-900))',
+        },
+        orange: {
+          50: 'hsl(var(--twc-orange-50))',
+          100: 'hsl(var(--twc-orange-100))',
+          200: 'hsl(var(--twc-orange-200))',
+          300: 'hsl(var(--twc-orange-300))',
+          400: 'hsl(var(--twc-orange-400))',
+          500: 'hsl(var(--twc-orange-500))',
+          600: 'hsl(var(--twc-orange-600))',
+          700: 'hsl(var(--twc-orange-700))',
+          800: 'hsl(var(--twc-orange-800))',
+          900: 'hsl(var(--twc-orange-900))',
+        },
+        green: {
+          50: 'hsl(var(--twc-green-50))',
+          100: 'hsl(var(--twc-green-100))',
+          200: 'hsl(var(--twc-green-200))',
+          300: 'hsl(var(--twc-green-300))',
+          400: 'hsl(var(--twc-green-400))',
+          500: 'hsl(var(--twc-green-500))',
+          600: 'hsl(var(--twc-green-600))',
+          700: 'hsl(var(--twc-green-700))',
+          800: 'hsl(var(--twc-green-800))',
+          900: 'hsl(var(--twc-green-900))',
+        },
+        blue: {
+          50: 'hsl(var(--twc-blue-50))',
+          100: 'hsl(var(--twc-blue-100))',
+          200: 'hsl(var(--twc-blue-200))',
+          300: 'hsl(var(--twc-blue-300))',
+          400: 'hsl(var(--twc-blue-400))',
+          500: 'hsl(var(--twc-blue-500))',
+          600: 'hsl(var(--twc-blue-600))',
+          700: 'hsl(var(--twc-blue-700))',
+          800: 'hsl(var(--twc-blue-800))',
+          900: 'hsl(var(--twc-blue-900))',
+        },
+        indigo: {
+          50: 'hsl(var(--twc-indigo-50))',
+          100: 'hsl(var(--twc-indigo-100))',
+          200: 'hsl(var(--twc-indigo-200))',
+          300: 'hsl(var(--twc-indigo-300))',
+          400: 'hsl(var(--twc-indigo-400))',
+          500: 'hsl(var(--twc-indigo-500))',
+          600: 'hsl(var(--twc-indigo-600))',
+          700: 'hsl(var(--twc-indigo-700))',
+          800: 'hsl(var(--twc-indigo-800))',
+          900: 'hsl(var(--twc-indigo-900))',
+        },
+        purple: {
+          50: 'hsl(var(--twc-purple-50))',
+          100: 'hsl(var(--twc-purple-100))',
+          200: 'hsl(var(--twc-purple-200))',
+          300: 'hsl(var(--twc-purple-300))',
+          400: 'hsl(var(--twc-purple-400))',
+          500: 'hsl(var(--twc-purple-500))',
+          600: 'hsl(var(--twc-purple-600))',
+          700: 'hsl(var(--twc-purple-700))',
+          800: 'hsl(var(--twc-purple-800))',
+          900: 'hsl(var(--twc-purple-900))',
+        },
+        pink: {
+          50: 'hsl(var(--twc-pink-50))',
+          100: 'hsl(var(--twc-pink-100))',
+          200: 'hsl(var(--twc-pink-200))',
+          300: 'hsl(var(--twc-pink-300))',
+          400: 'hsl(var(--twc-pink-400))',
+          500: 'hsl(var(--twc-pink-500))',
+          600: 'hsl(var(--twc-pink-600))',
+          700: 'hsl(var(--twc-pink-700))',
+          800: 'hsl(var(--twc-pink-800))',
+          900: 'hsl(var(--twc-pink-900))',
+        },
       },
       borderRadius: {
         lg: `var(--radius)`,
@@ -146,10 +199,8 @@ module.exports = {
     },
   },
   plugins: [
-    // createThemes(themes),
     require('tailwindcss-animate'),
     require('@tailwindcss/typography'),
     require('tailwind-scrollbar')({nocompatible: true}),
-    require('daisyui'),
   ],
 }
