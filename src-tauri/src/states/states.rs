@@ -25,6 +25,7 @@ pub struct WindowState {
 pub struct DockState {
     pub progress: Option<f64>,
     pub badge: Option<String>,
+    pub progress_color: Option<String>,
 }
 
 impl AppState {

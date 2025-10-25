@@ -94,10 +94,10 @@ mod mac {
     ///
     /// This enum is thread-safe as it contains only `Copy` types and is used within
     /// a `Mutex`-protected queue.
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone)]
     enum UpdateMode {
-        /// Set progress to a specific fraction
-        Set(f64),
+        /// Set progress to a specific fraction with optional color
+        Set { fraction: f64, color: Option<String> },
         /// Clear progress (set to 0.0)
         Clear,
     }
@@ -176,8 +176,8 @@ mod mac {
             // Process only the latest update (batching)
             if let Some(latest) = updates.last() {
                 let result = match latest {
-                    UpdateMode::Set(fraction) => {
-                        run_on_main(move |_| set_dock_progress_fraction(*fraction))
+                    UpdateMode::Set { fraction, color } => {
+                        run_on_main(move |_| set_dock_progress_fraction(*fraction, color.clone()))
                     }
                     UpdateMode::Clear => {
                         run_on_main(|_| clear_dock_progress())
@@ -261,12 +261,87 @@ mod mac {
         }
     }
 
+    /// Retrieves colors for progress bar rendering, using hex color if provided, otherwise system colors.
+    ///
+    /// # Arguments
+    /// * `hex` - Optional hex color string (e.g., "#ff0000" or "ff0000")
+    ///
+    /// # Returns
+    /// A tuple of `(background_color, foreground_color)` where:
+    /// - Background is always semi-transparent system gray
+    /// - Foreground is the provided hex color if valid, otherwise system green
+    ///
+    /// # Returns
+    /// * `Ok((Retained<NSColor>, Retained<NSColor>))` on success
+    /// * `Err(DockError::ObjectiveC)` on color creation failure
+    ///
+    /// # Safety
+    /// Uses unsafe Objective-C messaging but returns retained colors for safety.
+    fn get_colors_from_hex(hex: Option<&str>) -> Result<(Retained<NSColor>, Retained<NSColor>), DockError> {
+        // Always use system gray for background
+        let bg_color = unsafe {
+            let bg_color_raw: *mut NSColor = msg_send![class!(NSColor), systemGrayColor];
+            if bg_color_raw.is_null() {
+                error!("Failed to get systemGrayColor");
+                return Err(DockError::objective_c("Failed to get systemGrayColor".to_string(), None));
+            }
+            let bg_color_raw: *mut NSColor = msg_send![bg_color_raw, colorWithAlphaComponent: 0.55];
+            if bg_color_raw.is_null() {
+                error!("Failed to create background color with alpha");
+                return Err(DockError::objective_c("Failed to create background color with alpha".to_string(), None));
+            }
+            Retained::retain(bg_color_raw).unwrap()
+        };
+
+        let fg_color = if let Some(hex) = hex {
+            // Convert hex to RGBA using color utility
+            if let Some(color) = crate::utils::color::convert_hex_to_rgba(hex) {
+                unsafe {
+                    let fg_color_raw: *mut NSColor = msg_send![class!(NSColor),
+                        colorWithRed: color.r as f64,
+                        green: color.g as f64,
+                        blue: color.b as f64,
+                        alpha: color.a as f64];
+                    if fg_color_raw.is_null() {
+                        error!("Failed to create NSColor from hex");
+                        return Err(DockError::objective_c("Failed to create NSColor from hex".to_string(), None));
+                    }
+                    Retained::retain(fg_color_raw).unwrap()
+                }
+            } else {
+                error!("Invalid hex color: {}", hex);
+                // Fallback to system green
+                unsafe {
+                    let fg_color_raw: *mut NSColor = msg_send![class!(NSColor), systemGreenColor];
+                    if fg_color_raw.is_null() {
+                        error!("Failed to get systemGreenColor");
+                        return Err(DockError::objective_c("Failed to get systemGreenColor".to_string(), None));
+                    }
+                    Retained::retain(fg_color_raw).unwrap()
+                }
+            }
+        } else {
+            // Use system green
+            unsafe {
+                let fg_color_raw: *mut NSColor = msg_send![class!(NSColor), systemGreenColor];
+                if fg_color_raw.is_null() {
+                    error!("Failed to get systemGreenColor");
+                    return Err(DockError::objective_c("Failed to get systemGreenColor".to_string(), None));
+                }
+                Retained::retain(fg_color_raw).unwrap()
+            }
+        };
+
+        Ok((bg_color, fg_color))
+    }
+
     /// Draws a progress bar overlay on the current drawing context.
     ///
     /// # Arguments
     /// * `size` - The size of the icon canvas
     /// * `fraction` - Progress fraction (0.0 to 1.0)
     /// * `bar_height_ratio` - Ratio of icon height to use for bar height
+    /// * `color` - Optional hex color for the progress bar foreground
     ///
     /// # Returns
     /// * `Ok(())` on successful drawing
@@ -275,8 +350,8 @@ mod mac {
     /// # Behavior
     /// - Skips drawing if fraction is 0.0
     /// - Draws a rounded rectangle background and filled progress foreground
-    /// - Uses system colors for consistent appearance
-    fn draw_progress_bar(size: NSSize, fraction: f64, bar_height_ratio: f64) -> Result<(), DockError> {
+    /// - Uses provided hex color for foreground if valid, otherwise system colors
+    fn draw_progress_bar(size: NSSize, fraction: f64, bar_height_ratio: f64, color: Option<&str>) -> Result<(), DockError> {
         // Early return for zero progress to avoid unnecessary drawing
         if fraction == 0.0 {
             return Ok(());
@@ -294,8 +369,8 @@ mod mac {
             let bar_width = width - margin * 2.0;
             let fill_width = bar_width * fraction.clamp(0.0, 1.0);
 
-            // Retrieve system colors for progress bar
-            let (bg_color, fg_color) = get_colors()?;
+            // Retrieve colors for progress bar
+            let (bg_color, fg_color) = get_colors_from_hex(color)?;
 
             // Draw background rounded rectangle
             let bg_rect = NSRectFromDoubles(bar_x, bar_y, bar_width, bar_height);
@@ -423,6 +498,7 @@ mod mac {
     ///
     /// # Arguments
     /// * `fraction` - Progress value between 0.0 (no progress) and 1.0 (complete). Must be finite.
+    /// * `color` - Optional hex color for the progress bar (e.g., "#ff0000" or "ff0000")
     ///
     /// # Returns
     /// * `Ok(())` on successful queuing of the update
@@ -452,7 +528,7 @@ mod mac {
     /// async fn download_file() -> Result<(), Box<dyn std::error::Error>> {
     ///     for progress in 0..=100 {
     ///         let fraction = progress as f64 / 100.0;
-    ///         set_dock_progress_fraction_async(fraction).await?;
+    ///         set_dock_progress_fraction_async(fraction, None).await?;
     ///         // Simulate work
     ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     ///     }
@@ -463,7 +539,7 @@ mod mac {
     /// # See Also
     /// - [`set_dock_progress_fraction`] for the synchronous variant
     /// - [`clear_dock_progress_async`] for clearing progress asynchronously
-    pub async fn set_dock_progress_fraction_async(fraction: f64) -> Result<(), DockError> {
+    pub async fn set_dock_progress_fraction_async(fraction: f64, color: Option<String>) -> Result<(), DockError> {
         // Validate input (same as sync version)
         if !fraction.is_finite() || !(0.0..=1.0).contains(&fraction) {
             error!("Invalid progress fraction: {} (must be finite and between 0.0 and 1.0)", fraction);
@@ -474,7 +550,7 @@ mod mac {
         }
 
         debug!("Queueing async dock progress update to {}", fraction);
-        queue_update(UpdateMode::Set(fraction))
+        queue_update(UpdateMode::Set { fraction, color })
     }
 
     /// Clears the dock progress asynchronously with intelligent queuing and batching.
@@ -536,6 +612,7 @@ mod mac {
     ///
     /// # Arguments
     /// * `fraction` - Progress value between 0.0 (no progress) and 1.0 (complete). Must be finite.
+    /// * `color` - Optional hex color for the progress bar (e.g., "#ff0000" or "ff0000")
     ///
     /// # Returns
     /// * `Ok(())` on successful progress update
@@ -567,13 +644,14 @@ mod mac {
     /// use progress_helper::set_dock_progress_fraction;
     ///
     /// // Must be called from main thread
-    /// set_dock_progress_fraction(0.5)?;
+    /// set_dock_progress_fraction(0.5, None)?;
+    /// set_dock_progress_fraction(0.5, Some("#ff0000".to_string()))?;
     /// ```
     ///
     /// # See Also
     /// - [`set_dock_progress_fraction_async`] for the thread-safe asynchronous variant
     /// - [`clear_dock_progress`] for clearing progress synchronously
-    pub fn set_dock_progress_fraction(fraction: f64) -> Result<(), DockError> {
+    pub fn set_dock_progress_fraction(fraction: f64, color: Option<String>) -> Result<(), DockError> {
         // Ensure we're on the main thread for AppKit operations
         ensure_main_thread()?;
 
@@ -645,7 +723,7 @@ mod mac {
                                                 fraction: 1.0];
 
                     // Overlay the progress bar
-                    draw_progress_bar(size, fraction, PROGRESS_BAR_HEIGHT_RATIO)?;
+                    draw_progress_bar(size, fraction, PROGRESS_BAR_HEIGHT_RATIO, color.as_deref())?;
 
                     // Finalize drawing
                     let _: () = msg_send![new_image, unlockFocus];
@@ -853,13 +931,13 @@ mod mac {
 pub use mac::{clear_dock_badge, clear_dock_progress, clear_dock_progress_async, set_dock_badge, set_dock_progress_fraction, set_dock_progress_fraction_async};
 
 #[cfg(not(target_os = "macos"))]
-pub fn set_dock_progress_fraction(_fraction: f64) -> Result<(), DockError> {
+pub fn set_dock_progress_fraction(_fraction: f64, _color: Option<String>) -> Result<(), DockError> {
     // no-op on non-macOS: Dock progress is macOS-specific
     debug!("Dock progress not supported on non-macOS platforms");
     Ok(())
 }
 #[cfg(not(target_os = "macos"))]
-pub async fn set_dock_progress_fraction_async(_fraction: f64) -> Result<(), DockError> {
+pub async fn set_dock_progress_fraction_async(_fraction: f64, _color: Option<String>) -> Result<(), DockError> {
     // no-op on non-macOS: Dock progress is macOS-specific
     debug!("Dock progress not supported on non-macOS platforms");
     Ok(())
@@ -898,18 +976,18 @@ mod tests {
     #[tokio::test]
     async fn test_set_dock_progress_fraction_async_valid() {
         // Test valid fractions on all platforms
-        assert!(set_dock_progress_fraction_async(0.0).await.is_ok());
-        assert!(set_dock_progress_fraction_async(0.5).await.is_ok());
-        assert!(set_dock_progress_fraction_async(1.0).await.is_ok());
+        assert!(set_dock_progress_fraction_async(0.0, None).await.is_ok());
+        assert!(set_dock_progress_fraction_async(0.5, None).await.is_ok());
+        assert!(set_dock_progress_fraction_async(1.0, None).await.is_ok());
     }
 
     #[tokio::test]
     async fn test_set_dock_progress_fraction_async_invalid() {
         // Test invalid fractions - should return error on all platforms
-        assert!(matches!(set_dock_progress_fraction_async(-0.1).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
-        assert!(matches!(set_dock_progress_fraction_async(1.1).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
-        assert!(matches!(set_dock_progress_fraction_async(f64::NAN).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
-        assert!(matches!(set_dock_progress_fraction_async(f64::INFINITY).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
+        assert!(matches!(set_dock_progress_fraction_async(-0.1, None).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
+        assert!(matches!(set_dock_progress_fraction_async(1.1, None).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
+        assert!(matches!(set_dock_progress_fraction_async(f64::NAN, None).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
+        assert!(matches!(set_dock_progress_fraction_async(f64::INFINITY, None).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
     }
 
     #[tokio::test]

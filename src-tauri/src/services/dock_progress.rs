@@ -25,9 +25,12 @@ pub mod commands {
             return Err(error.to_string());
         }
 
+        let state_guard = state.lock().unwrap();
+        let color = state_guard.dock.progress_color.clone();
+
         let result = safe_dock_operation(
             || {
-                progress_helper::set_dock_progress_fraction(progress)
+                progress_helper::set_dock_progress_fraction(progress, color)
                     .map_err(|e| DockError::general(e.to_string(), "set_dock_progress_fraction"))
             },
             (), // No-op fallback
@@ -60,12 +63,15 @@ pub mod commands {
         use tokio::time::sleep;
         log::info!("Starting test_dock_progress animation");
 
+        // Extract color once outside the loop
+        let color = state.lock().unwrap().dock.progress_color.clone();
+
         // Show progress from 0% to 100% in steps
         for i in 0..=20 {
             let progress = i as f64 / 20.0;
             log::debug!("Setting progress to {:.2}", progress);
 
-            match set_dock_progress_fraction_async(progress).await {
+            match set_dock_progress_fraction_async(progress, color.clone()).await {
                 Ok(_) => log::debug!("Successfully set progress to {:.2}", progress),
                 Err(e) => {
                     log::error!("Failed to set dock progress to {:.2}: {:?}", progress, e);
