@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+pub mod crash_reporter;
+
 mod core;
 mod nodes;
 pub(crate) mod progress_helper;

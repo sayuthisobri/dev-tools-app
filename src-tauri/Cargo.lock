@@ -3855,6 +3855,7 @@ dependencies = [
  "cookie",
  "cookie_store 0.22.0",
  "dirs-next",
+ "dispatch2",
  "env_logger",
  "k8s-openapi",
  "kube",

@@ -11,7 +11,7 @@ pub mod request;
 pub mod shell;
 
 pub mod commands {
-    use crate::errors::ApiResult;
+    use crate::errors::{APIError, ApiResult};
     pub use crate::services::aws::commands::*;
     pub use crate::services::aws_s3::commands::*;
     pub use crate::services::dock_progress::commands::*;
@@ -24,7 +24,11 @@ pub mod commands {
     #[command(async)]
     pub async fn env() -> ApiResult<Vec<String>> {
         log::info!("invoke env");
-        let env_list = env::var("PATH").expect("Environment variable PATH not found").split(':').map(String::from).collect();
+        let path_var = env::var("PATH").map_err(|e| {
+            log::error!("Failed to get PATH environment variable: {}", e);
+            APIError::General("Environment variable PATH not found".to_string())
+        })?;
+        let env_list: Vec<String> = path_var.split(':').map(String::from).collect();
         log::info!("env: {:?}", env_list);
         Ok(env_list)
     }

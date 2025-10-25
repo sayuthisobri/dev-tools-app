@@ -22,7 +22,13 @@ type SharedAppState = Arc<Mutex<states::AppState>>;
 
 fn append_env_path(new_paths: Vec<PathBuf>) {
     // Get the current PATH variable
-    let current_path = env::var("PATH").expect("env PATH is not set in $PATH");
+    let current_path = match env::var("PATH") {
+        Ok(path) => path,
+        Err(e) => {
+            log::error!("Failed to get PATH environment variable: {}", e);
+            return;
+        }
+    };
     let mut paths: Vec<PathBuf> = env::split_paths(&current_path).collect();
 
     // Add new paths
@@ -33,7 +39,13 @@ fn append_env_path(new_paths: Vec<PathBuf>) {
     }
 
     // Join paths back together
-    let new_path = env::join_paths(paths).expect("env PATH join error");
+    let new_path = match env::join_paths(paths) {
+        Ok(path) => path,
+        Err(e) => {
+            log::error!("Failed to join PATH: {}", e);
+            return;
+        }
+    };
 
     // Set the new PATH
     env::set_var("PATH", new_path);
@@ -48,24 +60,24 @@ pub fn run() {
     //     y: 100,      // Default y position
     // };
     // let window_state = Rc::new(RefCell::new(window_state));
-    append_env_path(
-        vec![
-            "/usr/local/bin",
-            "/usr/local/sbin",
-            "/opt/homebrew/bin",
-            "/opt/homebrew/sbin",
-            "/opt/podman/bin",
-            "~/bun/bin",
-            "~/.bin",
-            "~/.local/bin",
-            "~/.config/cargo/bin",
-        ]
+    let paths_to_append = vec![
+        "/usr/local/bin",
+        "/usr/local/sbin",
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/opt/podman/bin",
+        "~/bun/bin",
+        "~/.bin",
+        "~/.local/bin",
+        "~/.config/cargo/bin",
+    ];
+    let expanded_paths: Vec<PathBuf> = paths_to_append
         .into_iter()
         .map(|path| utils::expand_tilde(path))
-        .map(PathBuf::from)
-        .collect(),
-    );
+        .collect();
+    append_env_path(expanded_paths);
     init_logging();
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::default()
@@ -83,27 +95,41 @@ pub fn run() {
         // .plugin(tauri_plugin_window_state::Builder::new().build())
         .manage(SharedAppState::new(Mutex::new(states::AppState::default())))
         .setup(|app| {
+            // Initialize crash reporting
+            let crash_log_path = app.path().app_log_dir()?.join("msms-dev-tools-crash.log");
+            utils::crash_reporter::init_crash_reporting(crash_log_path);
+
             setup_menu(app)?;
 
-            let window = app
-                .get_webview_window("main")
-                .expect("Failed to get main window");
+            let window = match app.get_webview_window("main") {
+                Some(w) => w,
+                None => {
+                    log::error!("Failed to get main window");
+                    return Err("Failed to get main window".into());
+                }
+            };
 
             #[cfg(target_os = "macos")]
             {
-                apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None)
-                    .expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
+                if let Err(e) = apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None) {
+                    log::error!("Failed to apply vibrancy: {}", e);
+                }
             }
 
             #[cfg(target_os = "windows")]
-            apply_blur(&window, Some((18, 18, 18, 125)))
-                .expect("Unsupported platform! 'apply_blur' is only supported on Windows");
+            if let Err(e) = apply_blur(&window, Some((18, 18, 18, 125))) {
+                log::error!("Failed to apply blur: {}", e);
+            }
 
             Ok(())
         })
         .on_window_event(handle_window_event())
         .invoke_handler(commands::setup_handler())
         .run(tauri::generate_context!())
+        .map_err(|e| {
+            log::error!("Failed to run Tauri application: {}", e);
+            e
+        })
         .expect("error while running tauri application");
 
     // tracing_subscriber::registry()
@@ -140,16 +166,21 @@ fn setup_menu(app: &mut App) -> Result<(), Box<dyn Error>> {
         ])
         .build()?;
 
-    app.set_menu(menu)?;
+    app.set_menu(menu).map_err(|e| {
+        log::error!("Failed to set menu: {}", e);
+        e
+    })?;
 
     app.on_menu_event(move |app, event| match event.id().0.as_str() {
         "settings" => {
-            app.emit("go-to", "/settings")
-                .expect("Unable to emit go-to event");
+            if let Err(e) = app.emit("go-to", "/settings") {
+                log::error!("Unable to emit go-to event: {}", e);
+            }
         }
         "refresh" => {
-            app.emit("go-to", "page::refresh")
-                .expect("Unable to emit window event");
+            if let Err(e) = app.emit("go-to", "page::refresh") {
+                log::error!("Unable to emit window event: {}", e);
+            }
         }
         _ => {}
     });
@@ -161,14 +192,20 @@ fn handle_window_event() -> fn(&Window, &WindowEvent) {
         const EVENT_NAME: &str = "window:event";
         let app = w.app_handle();
         let state = app.state::<SharedAppState>();
-        let mut state = state.lock().unwrap();
+        let mut state = match state.lock() {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("Failed to lock app state: {}", e);
+                return;
+            }
+        };
         let current_monitor_name =
             utils::get_current_monitor_name(w).unwrap_or("default".to_string());
         let window_state = &mut state.window;
-        window_state.height = w.inner_size().unwrap().height;
-        window_state.width = w.inner_size().unwrap().width;
-        window_state.x = w.outer_position().unwrap().x;
-        window_state.y = w.outer_position().unwrap().y;
+        window_state.height = w.inner_size().unwrap_or_default().height;
+        window_state.width = w.inner_size().unwrap_or_default().width;
+        window_state.x = w.outer_position().unwrap_or_default().x;
+        window_state.y = w.outer_position().unwrap_or_default().y;
         window_state.monitor_name = current_monitor_name.clone();
         window_state.scale_factor = w.scale_factor().unwrap_or(-1.0);
         // match event {
@@ -187,7 +224,9 @@ fn handle_window_event() -> fn(&Window, &WindowEvent) {
         //     }
         //     _ => {}
         // }
-        let _ = app.emit(EVENT_NAME, &window_state);
+        if let Err(e) = app.emit(EVENT_NAME, &window_state) {
+            log::error!("Failed to emit window event: {}", e);
+        }
         // println!("App state: {:?}", state);
     }
 }
@@ -199,5 +238,22 @@ fn init_logging() {
         .with(env_filter)
         .with(http::HTTPTraceLayer); // Make sure this is the correct type that implements Layer
 
-    tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
+    if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
+        eprintln!("Failed to set tracing subscriber: {}", e);
+    }
+
+    // Install panic hook to log panics
+    std::panic::set_hook(Box::new(|panic_info| {
+        let location = panic_info.location().unwrap_or_else(|| std::panic::Location::caller());
+        let message = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            s
+        } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+            s
+        } else {
+            "Unknown panic"
+        };
+        log::error!("Panic occurred at {}:{}: {}", location.file(), location.line(), message);
+        // Report crash to file
+        utils::crash_reporter::report_panic(panic_info);
+    }));
 }

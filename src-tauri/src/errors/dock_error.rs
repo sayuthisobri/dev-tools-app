@@ -10,6 +10,10 @@ pub enum DockError {
     ObjectiveC(String),
     #[error("Invalid progress value: {0}")]
     InvalidProgress(String),
+    #[error("Async operation failed: {0}")]
+    AsyncOperation(String),
+    #[error("Queue processing error: {0}")]
+    QueueError(String),
 }
 
 pub type DockResult<T> = Result<T, DockError>;
