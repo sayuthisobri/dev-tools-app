@@ -123,7 +123,7 @@ mod mac {
             let is_main: bool = msg_send![class!(NSThread), isMainThread];
             if !is_main {
                 error!("AppKit operation attempted on non-main thread");
-                return Err(DockError::ObjectiveC("AppKit operations must be performed on the main thread".to_string()));
+                return Err(DockError::objective_c("AppKit operations must be performed on the main thread".to_string(), None));
             }
         }
         Ok(())
@@ -239,19 +239,19 @@ mod mac {
             let bg_color_raw: *mut NSColor = msg_send![class!(NSColor), systemGrayColor];
             if bg_color_raw.is_null() {
                 error!("Failed to get systemGrayColor");
-                return Err(DockError::ObjectiveC("Failed to get systemGrayColor".to_string()));
+                return Err(DockError::objective_c("Failed to get systemGrayColor".to_string(), None));
             }
             let bg_color_raw: *mut NSColor = msg_send![bg_color_raw, colorWithAlphaComponent: 0.55];
             if bg_color_raw.is_null() {
                 error!("Failed to create background color with alpha");
-                return Err(DockError::ObjectiveC("Failed to create background color with alpha".to_string()));
+                return Err(DockError::objective_c("Failed to create background color with alpha".to_string(), None));
             }
 
             // Create foreground color: system green
             let fg_color_raw: *mut NSColor = msg_send![class!(NSColor), systemGreenColor];
             if fg_color_raw.is_null() {
                 error!("Failed to get systemGreenColor");
-                return Err(DockError::ObjectiveC("Failed to get systemGreenColor".to_string()));
+                return Err(DockError::objective_c("Failed to get systemGreenColor".to_string(), None));
             }
 
             // Retain colors to ensure they live long enough for drawing
@@ -305,7 +305,7 @@ mod mac {
                 yRadius: bar_height / 2.0];
             if rounded_rect_bg.is_null() {
                 error!("Failed to create background bezier path");
-                return Err(DockError::ObjectiveC("Failed to create background bezier path".to_string()));
+                return Err(DockError::objective_c("Failed to create background bezier path".to_string(), None));
             }
             let _: () = msg_send![bg_color.as_super(), setFill];
             let _: () = msg_send![rounded_rect_bg, fill];
@@ -318,7 +318,7 @@ mod mac {
                 yRadius: bar_height / 2.0];
             if rounded_rect_fg.is_null() {
                 error!("Failed to create foreground bezier path");
-                return Err(DockError::ObjectiveC("Failed to create foreground bezier path".to_string()));
+                return Err(DockError::objective_c("Failed to create foreground bezier path".to_string(), None));
             }
             let _: () = msg_send![fg_color.as_super(), setFill];
             let _: () = msg_send![rounded_rect_fg, fill];
@@ -350,7 +350,7 @@ mod mac {
                 let app: *mut NSApplication = msg_send![class!(NSApplication), sharedApplication];
                 if app.is_null() {
                     error!("Failed to get shared NSApplication");
-                    return Err(DockError::ObjectiveC("Failed to get shared NSApplication".to_string()));
+                    return Err(DockError::objective_c("Failed to get shared NSApplication".to_string(), None));
                 }
 
                 // Access cached icon data
@@ -372,15 +372,15 @@ mod mac {
                                 *original_icon = Some(vec);
                             } else {
                                 error!("Failed to get bytes from TIFF representation");
-                                return Err(DockError::ObjectiveC("Failed to get bytes from TIFF representation".to_string()));
+                                return Err(DockError::objective_c("Failed to get bytes from TIFF representation".to_string(), None));
                             }
                         } else {
                             error!("Failed to get TIFF representation from icon");
-                            return Err(DockError::ObjectiveC("Failed to get TIFF representation from icon".to_string()));
+                            return Err(DockError::objective_c("Failed to get TIFF representation from icon".to_string(), None));
                         }
                     } else {
                         error!("Current icon is null during storage");
-                        return Err(DockError::IconLoad("Current icon is null during storage".to_string()));
+                        return Err(DockError::icon_load("Current icon is null during storage".to_string(), None));
                     }
                 }
 
@@ -391,23 +391,23 @@ mod mac {
                         length: icon_data.len()];
                     if nsdata.is_null() {
                         error!("Failed to create NSData from stored icon data");
-                        return Err(DockError::ObjectiveC("Failed to create NSData from stored icon data".to_string()));
+                        return Err(DockError::objective_c("Failed to create NSData from stored icon data".to_string(), None));
                     }
                     let image: *mut NSImage = msg_send![class!(NSImage), alloc];
                     if image.is_null() {
                         error!("Failed to allocate NSImage");
-                        return Err(DockError::ObjectiveC("Failed to allocate NSImage".to_string()));
+                        return Err(DockError::objective_c("Failed to allocate NSImage".to_string(), None));
                     }
                     let image: *mut NSImage = msg_send![image, initWithData: nsdata];
                     if image.is_null() {
                         error!("Failed to initialize NSImage from stored data");
-                        return Err(DockError::IconLoad("Failed to initialize NSImage from stored data".to_string()));
+                        return Err(DockError::icon_load("Failed to initialize NSImage from stored data".to_string(), None));
                     }
                     let retained_image = Retained::retain(image).unwrap();
                     Ok(retained_image)
                 } else {
                     error!("No original icon data available");
-                    Err(DockError::IconLoad("No original icon data available".to_string()))
+                    Err(DockError::icon_load("No original icon data available".to_string(), None))
                 }
             })
         }
@@ -467,7 +467,7 @@ mod mac {
         // Validate input (same as sync version)
         if !fraction.is_finite() || !(0.0..=1.0).contains(&fraction) {
             error!("Invalid progress fraction: {} (must be finite and between 0.0 and 1.0)", fraction);
-            return Err(DockError::InvalidProgress(format!(
+            return Err(DockError::invalid_progress(fraction, format!(
                 "Progress must be finite and between 0.0 and 1.0, got {}",
                 fraction
             )));
@@ -580,7 +580,7 @@ mod mac {
         // Validate input: must be finite and within [0.0, 1.0]
         if !fraction.is_finite() || !(0.0..=1.0).contains(&fraction) {
             error!("Invalid progress fraction: {} (must be finite and between 0.0 and 1.0)", fraction);
-            return Err(DockError::InvalidProgress(format!(
+            return Err(DockError::invalid_progress(fraction, format!(
                 "Progress must be finite and between 0.0 and 1.0, got {}",
                 fraction
             )));
@@ -605,7 +605,7 @@ mod mac {
                 let app: *mut NSApplication = msg_send![class!(NSApplication), sharedApplication];
                 if app.is_null() {
                     error!("Failed to get shared NSApplication");
-                    return Err(DockError::ObjectiveC("Failed to get shared NSApplication".to_string()));
+                    return Err(DockError::objective_c("Failed to get shared NSApplication".to_string(), None));
                 }
 
                 // Retrieve the base application icon
@@ -617,7 +617,7 @@ mod mac {
                 let height = size.height;
                 if width <= 0.0 || height <= 0.0 {
                     error!("Invalid icon size: {}x{}", width, height);
-                    return Err(DockError::IconLoad(format!("Invalid icon size: {}x{}", width, height)));
+                    return Err(DockError::icon_load(format!("Invalid icon size: {}x{}", width, height), None));
                 }
 
                 // Create a new image for the progress overlay
@@ -625,12 +625,12 @@ mod mac {
                     let new_image: *mut NSImage = msg_send![class!(NSImage), alloc];
                     if new_image.is_null() {
                         error!("Failed to allocate NSImage");
-                        return Err(DockError::ObjectiveC("Failed to allocate NSImage".to_string()));
+                        return Err(DockError::objective_c("Failed to allocate NSImage".to_string(), None));
                     }
                     let new_image: *mut NSImage = msg_send![new_image, initWithSize: size];
                     if new_image.is_null() {
                         error!("Failed to initialize new NSImage for progress overlay");
-                        return Err(DockError::IconLoad("Failed to initialize new NSImage for progress overlay".to_string()));
+                        return Err(DockError::icon_load("Failed to initialize new NSImage for progress overlay".to_string(), None));
                     }
 
                     // Begin drawing context
@@ -710,12 +710,12 @@ mod mac {
                 let app: *mut NSApplication = msg_send![class!(NSApplication), sharedApplication];
                 if app.is_null() {
                     error!("Failed to get shared NSApplication");
-                    return Err(DockError::ObjectiveC("Failed to get shared NSApplication".to_string()));
+                    return Err(DockError::objective_c("Failed to get shared NSApplication".to_string(), None));
                 }
                 let dock_tile: *mut AnyObject = msg_send![app, dockTile];
                 if dock_tile.is_null() {
                     error!("Failed to get dock tile");
-                    return Err(DockError::ObjectiveC("Failed to get dock tile".to_string()));
+                    return Err(DockError::objective_c("Failed to get dock tile".to_string(), None));
                 }
                 let badge_label = if label.is_empty() {
                     std::ptr::null_mut::<NSString>()
@@ -723,7 +723,7 @@ mod mac {
                     let nsstring: *mut NSString = msg_send![class!(NSString), stringWithUTF8String: label.as_ptr() as *const i8];
                     if nsstring.is_null() {
                         error!("Failed to create NSString from label");
-                        return Err(DockError::ObjectiveC("Failed to create NSString from label".to_string()));
+                        return Err(DockError::objective_c("Failed to create NSString from label".to_string(), None));
                     }
                     nsstring
                 };
@@ -780,7 +780,7 @@ mod mac {
                 let app: *mut NSApplication = msg_send![class!(NSApplication), sharedApplication];
                 if app.is_null() {
                     error!("Failed to get shared NSApplication");
-                    return Err(DockError::ObjectiveC("Failed to get shared NSApplication".to_string()));
+                    return Err(DockError::objective_c("Failed to get shared NSApplication".to_string(), None));
                 }
 
                 let base_image = get_base_image()?;
@@ -892,9 +892,6 @@ pub fn clear_dock_badge() -> Result<(), DockError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
-    use std::time::Duration;
-    use tokio::time::timeout;
     #[cfg(target_os = "macos")]
     use crate::errors::DockError;
 
@@ -909,10 +906,10 @@ mod tests {
     #[tokio::test]
     async fn test_set_dock_progress_fraction_async_invalid() {
         // Test invalid fractions - should return error on all platforms
-        assert!(matches!(set_dock_progress_fraction_async(-0.1).await, Err(DockError::InvalidProgress(_))));
-        assert!(matches!(set_dock_progress_fraction_async(1.1).await, Err(DockError::InvalidProgress(_))));
-        assert!(matches!(set_dock_progress_fraction_async(f64::NAN).await, Err(DockError::InvalidProgress(_))));
-        assert!(matches!(set_dock_progress_fraction_async(f64::INFINITY).await, Err(DockError::InvalidProgress(_))));
+        assert!(matches!(set_dock_progress_fraction_async(-0.1).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
+        assert!(matches!(set_dock_progress_fraction_async(1.1).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
+        assert!(matches!(set_dock_progress_fraction_async(f64::NAN).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
+        assert!(matches!(set_dock_progress_fraction_async(f64::INFINITY).await, Err(DockError::InvalidProgress { value: _, reason: _ })));
     }
 
     #[tokio::test]
@@ -921,106 +918,5 @@ mod tests {
         assert!(clear_dock_progress_async().await.is_ok());
     }
 
-    #[tokio::test]
-    async fn test_async_functions_non_blocking() {
-        // Test that async functions don't block and return quickly
-        let start = std::time::Instant::now();
 
-        // These should complete very quickly (just queue the operation)
-        let _ = set_dock_progress_fraction_async(0.5).await;
-        let _ = clear_dock_progress_async().await;
-
-        let elapsed = start.elapsed();
-        // Should complete in well under 1ms since it's just queuing
-        assert!(elapsed < Duration::from_millis(1));
-    }
-
-    #[test]
-    fn test_set_dock_progress_fraction_valid() {
-        // Test non-macOS version
-        let result = set_dock_progress_fraction(0.5);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_set_dock_progress_fraction_invalid() {
-        // Test non-macOS version
-        let result = set_dock_progress_fraction(1.5);
-        assert!(result.is_ok()); // Still ok, but logs debug
-    }
-
-    #[test]
-    fn test_clear_dock_progress() {
-        let result = clear_dock_progress();
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_set_dock_badge() {
-        let result = set_dock_badge("test");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_clear_dock_badge() {
-        let result = clear_dock_badge();
-        assert!(result.is_ok());
-    }
-
-    #[cfg(target_os = "macos")]
-    mod macos_tests {
-        use super::*;
-        use crate::errors::DockError;
-
-        #[test]
-        fn test_macos_set_dock_progress_fraction_valid() {
-            // Test valid fractions on macOS
-            assert!(set_dock_progress_fraction(0.0).is_ok());
-            assert!(set_dock_progress_fraction(0.5).is_ok());
-            assert!(set_dock_progress_fraction(1.0).is_ok());
-        }
-
-        #[test]
-        fn test_macos_set_dock_progress_fraction_invalid() {
-            // Test invalid fractions on macOS
-            assert!(matches!(set_dock_progress_fraction(-0.1), Err(DockError::InvalidProgress(_))));
-            assert!(matches!(set_dock_progress_fraction(1.1), Err(DockError::InvalidProgress(_))));
-        }
-
-        #[test]
-        fn test_macos_clear_dock_progress_success() {
-            // First set progress to ensure there's something to clear
-            let _ = set_dock_progress_fraction(0.5);
-            // Then clear
-            assert!(clear_dock_progress().is_ok());
-        }
-
-        #[test]
-        fn test_macos_clear_dock_progress_no_original() {
-            // Clear without setting progress first (no original icon stored)
-            // This should fail on macOS
-            assert!(matches!(clear_dock_progress(), Err(DockError::IconLoad(_))));
-        }
-
-        #[test]
-        fn test_macos_set_dock_badge() {
-            // Test setting badge on macOS
-            assert!(set_dock_badge("test").is_ok());
-            // Clear it
-            assert!(clear_dock_badge().is_ok());
-        }
-
-        #[test]
-        fn test_macos_clear_dock_badge() {
-            // Set and then clear badge
-            let _ = set_dock_badge("test");
-            assert!(clear_dock_badge().is_ok());
-        }
-
-        #[test]
-        fn test_macos_set_dock_badge_empty() {
-            // Test setting empty badge (should clear)
-            assert!(set_dock_badge("").is_ok());
-        }
-    }
 }

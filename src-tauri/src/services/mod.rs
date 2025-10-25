@@ -44,6 +44,7 @@ pub mod commands {
             clear_dock,
             test_dock_progress,
             set_dock_badge,
+            simulate_panic,
             clear_dock_badge,
             env,
         ]

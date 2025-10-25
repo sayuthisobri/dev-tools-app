@@ -1,11 +1,14 @@
 pub mod commands {
+    use crate::errors::DockError;
     use crate::states::AppState;
+    use crate::utils::graceful_degradation::safe_dock_operation;
     use crate::utils::progress_helper::{
         self, clear_dock_progress_async, set_dock_progress_fraction_async,
     };
+    use crate::utils::state_emitter::{update_field_and_emit, StateField};
     use std::sync::{Arc, Mutex};
     use tauri::State;
-    use tauri::{command, Emitter};
+    use tauri::command;
 
     type SharedAppState = Arc<Mutex<AppState>>;
 
@@ -15,22 +18,35 @@ pub mod commands {
         state: State<SharedAppState>,
         app: tauri::AppHandle,
     ) -> Result<(), String> {
-        log::info!("Setting dock progress to {}", progress);
-        let result =
-            progress_helper::set_dock_progress_fraction(progress).map_err(|e| e.to_string())?;
-        let mut state = state.lock().unwrap();
-        state.dock.progress = Some(progress);
-        let _ = app.emit("dock-progress-updated", &state.dock);
-        Ok(result)
+        // Input validation
+        if !(0.0..=1.0).contains(&progress) {
+            let error = DockError::invalid_progress(progress, "Progress must be between 0.0 and 1.0");
+            log::error!("{:?}", error);
+            return Err(error.to_string());
+        }
+
+        let result = safe_dock_operation(
+            || {
+                progress_helper::set_dock_progress_fraction(progress)
+                    .map_err(|e| DockError::general(e.to_string(), "set_dock_progress_fraction"))
+            },
+            (), // No-op fallback
+        );
+
+        match update_field_and_emit(&state, &app, StateField::Dock, |s| s.dock.progress = Some(progress)) {
+            Ok(_) => Ok(result),
+            Err(e) => {
+                log::error!("Failed to update state: {}", e);
+                Err(e)
+            }
+        }
     }
 
     #[command]
     pub fn clear_dock(state: State<SharedAppState>, app: tauri::AppHandle) -> Result<(), String> {
         log::info!("Clearing dock progress");
         let result = progress_helper::clear_dock_progress().map_err(|e| e.to_string())?;
-        let mut state = state.lock().unwrap();
-        state.dock.progress = None;
-        let _ = app.emit("dock-progress-updated", &state.dock);
+        update_field_and_emit(&state, &app, StateField::Dock, |s| s.dock.progress = None)?;
         Ok(result)
     }
 
@@ -57,12 +73,8 @@ pub mod commands {
                 }
             }
 
-            // Update state and emit event (acquire lock only for this block)
-            {
-                let mut state_guard = state.lock().unwrap();
-                state_guard.dock.progress = Some(progress);
-                let _ = app.emit("dock-progress-updated", &state_guard.dock);
-            }
+            // Update state and emit event
+            update_field_and_emit(&state, &app, StateField::Dock, |s| s.dock.progress = Some(progress))?;
 
             sleep(Duration::from_millis(100)).await;
         }
@@ -81,12 +93,8 @@ pub mod commands {
             }
         }
 
-        // Update state to clear progress (acquire lock only for this block)
-        {
-            let mut state_guard = state.lock().unwrap();
-            state_guard.dock.progress = None;
-            let _ = app.emit("dock-progress-updated", &state_guard.dock);
-        }
+        // Update state to clear progress
+        update_field_and_emit(&state, &app, StateField::Dock, |s| s.dock.progress = None)?;
 
         log::info!("test_dock_progress completed successfully");
         Ok(())
@@ -99,9 +107,7 @@ pub mod commands {
         app: tauri::AppHandle,
     ) -> Result<(), String> {
         let result = progress_helper::set_dock_badge(label).map_err(|e| e.to_string())?;
-        let mut state = state.lock().unwrap();
-        state.dock.badge = Some(label.to_string());
-        let _ = app.emit("dock-badge-updated", &state.dock);
+        update_field_and_emit(&state, &app, StateField::Dock, |s| s.dock.badge = Some(label.to_string()))?;
         Ok(result)
     }
 
@@ -111,9 +117,17 @@ pub mod commands {
         app: tauri::AppHandle,
     ) -> Result<(), String> {
         let result = progress_helper::clear_dock_badge().map_err(|e| e.to_string())?;
-        let mut state = state.lock().unwrap();
-        state.dock.badge = None;
-        let _ = app.emit("dock-badge-updated", &state.dock);
+        update_field_and_emit(&state, &app, StateField::Dock, |s| s.dock.badge = None)?;
         Ok(result)
+    }
+    #[command]
+    pub fn simulate_panic() -> Result<(), String> {
+        log::info!("Simulating panic for crash testing");
+
+        // Log additional context before panic
+        let thread_info = format!("Thread: {:?}", std::thread::current());
+        log::error!("Intentional panic triggered. Context: {}", thread_info);
+
+        panic!("Simulated panic to test crash logging behavior");
     }
 }

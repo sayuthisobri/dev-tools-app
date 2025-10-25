@@ -17,18 +17,17 @@ export default function SettingPage(): React.ReactNode {
   const [badgeText, setBadgeText] = useState<string>("");
 
   useEffect(() => {
-    // Listen for dock progress updates
-    const unsubscribeProgress = listen("dock-progress-updated", (event) => {
+    // Listen for dock updates
+    const unsubscribeProgress = listen("dock-updated", (event) => {
       const dockState = event.payload as {
         progress: number | null;
         badge: string | null;
       };
       setDockState(dockState);
-      if (dockState.progress !== null) {
-        setProgressValue([Math.round(dockState.progress * 100)]);
-      } else {
-        setProgressValue([0]);
-      }
+      setBadgeText(dockState.badge || "");
+      setProgressValue([
+        dockState.progress !== null ? Math.round(dockState.progress * 100) : 0,
+      ]);
     });
 
     // Listen for dock badge updates
@@ -57,7 +56,9 @@ export default function SettingPage(): React.ReactNode {
     try {
       await run("set_dock_progress", { progress });
     } catch (error) {
-      toast.error("Failed to set dock progress");
+      toast.error("Failed to set dock progress", {
+        description: String(error),
+      });
     }
   };
 
@@ -65,7 +66,9 @@ export default function SettingPage(): React.ReactNode {
     try {
       await run("set_dock_badge", { label: badgeText });
     } catch (error) {
-      toast.error("Failed to set dock badge");
+      toast.error("Failed to set dock badge", {
+        description: String(error),
+      });
     }
   };
 
@@ -74,7 +77,9 @@ export default function SettingPage(): React.ReactNode {
       await run("clear_dock");
       setProgressValue([0]);
     } catch (error) {
-      toast.error("Failed to clear dock progress");
+      toast.error("Failed to clear dock progress", {
+        description: String(error),
+      });
     }
   };
 
@@ -83,7 +88,9 @@ export default function SettingPage(): React.ReactNode {
       await run("clear_dock_badge");
       setBadgeText("");
     } catch (error) {
-      toast.error("Failed to clear dock badge");
+      toast.error("Failed to clear dock badge", {
+        description: String(error),
+      });
     }
   };
   return (
@@ -158,6 +165,20 @@ export default function SettingPage(): React.ReactNode {
           <Button onClick={handleClearBadge} variant="outline">
             Clear Badge
           </Button>
+           <Button
+             onClick={async () => {
+               try {
+                 await run("simulate_panic");
+               } catch (error) {
+                 toast.error("Panic simulated", {
+                   description: "The app should have crashed and logged the panic.",
+                 });
+               }
+             }}
+             variant="destructive"
+           >
+             Simulate Panic
+           </Button>
         </div>
       </div>
 

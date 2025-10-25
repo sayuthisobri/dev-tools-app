@@ -78,6 +78,9 @@ pub fn run() {
     append_env_path(expanded_paths);
     init_logging();
 
+    // Setup signal handlers for unsafe crashes
+    utils::signal_handler::setup_signal_handlers();
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::default()

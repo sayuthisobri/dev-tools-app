@@ -1,0 +1,32 @@
+{
+  "rust-analyzer": {
+    "procMacro": {
+      "enable": false
+    },
+    "cargo": {
+      "loadOutDirsFromCheck": true
+    },
+    "checkOnSave": false,
+    "completion": {
+      "autoimport": {
+        "enable": false
+      }
+    },
+    "inlayHints": {
+      "enable": false
+    },
+    "diagnostics": {
+      "enable": true,
+      "experimental": {
+        "enableProcAttrMacros": false
+      }
+    },
+    "workspace": {
+      "symbol": {
+        "search": {
+          "scope": "workspace"
+        }
+      }
+    }
+  }
+}
